@@ -97,6 +97,7 @@ import io.github.xingyingyuzhui.modbusmobile.ui.shell.LocalShellMode
 import io.github.xingyingyuzhui.modbusmobile.ui.shell.ShellMode
 import io.github.xingyingyuzhui.modbusmobile.ui.shell.dockClearance
 import io.github.xingyingyuzhui.modbusmobile.ui.shell.pageStart
+import io.github.xingyingyuzhui.modbusmobile.ui.components.TextLink
 import io.github.xingyingyuzhui.modbusmobile.ui.theme.ButtonRadius
 import io.github.xingyingyuzhui.modbusmobile.ui.theme.CardRadius
 import io.github.xingyingyuzhui.modbusmobile.ui.theme.FieldRadius
@@ -122,6 +123,8 @@ data class EditActions(
     /** 打开添加向导 / 用同一个向导配置这个组件。 */
     val onAddWidget: () -> Unit = {},
     val onOpenWidget: (String) -> Unit = {},
+    /** 清掉这个面板里看不到的组件（读不懂 / 配置不完整）。放在最后：测试里有按位置传参的。 */
+    val onDeleteHidden: () -> Unit = {},
 )
 
 /**
@@ -143,9 +146,11 @@ fun PanelEditor(
     val columns = if (landscape) 4 else panel.columns
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmDeleteHidden by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var selectedId by remember(panel.id) { mutableStateOf<String?>(null) }
     val widgets = panel.widgets.filter { it.isUsable }
+    val hidden = panel.widgets.size - widgets.size
     // 选中的组件被删掉 / 换了面板：工具条收起
     val selected = widgets.firstOrNull { it.id == selectedId }
     val requestCancel = { if (edit.dirty) confirmDiscard = true else actions.onCancel() }
@@ -201,6 +206,7 @@ fun PanelEditor(
                         modifier = Modifier.padding(vertical = 4.dp).testTag("edit-empty"),
                     )
                 }
+                if (hidden > 0) HiddenWidgetsNote(hidden) { confirmDeleteHidden = true }
                 EditGrid(
                     widgets, columns, snapshots, actions, spacing.s, selectedId,
                     onSelect = { id -> selectedId = if (selectedId == id) null else id },
@@ -244,12 +250,39 @@ fun PanelEditor(
     if (confirmDelete) {
         ConfirmDialog(
             title = stringResource(R.string.panel_edit_delete_panel_title, panel.name),
-            body = stringResource(R.string.panel_edit_delete_panel_body, panel.widgets.count { it.isUsable }),
+            body = stringResource(R.string.panel_edit_delete_panel_body, panel.widgets.size),
             confirm = stringResource(R.string.panel_edit_delete_confirm),
             dismiss = stringResource(R.string.action_cancel),
             onConfirm = { confirmDelete = false; settingsOpen = false; actions.onDeletePanel() },
             onDismiss = { confirmDelete = false },
         )
+    }
+    if (confirmDeleteHidden) {
+        ConfirmDialog(
+            title = stringResource(R.string.panel_edit_hidden_title, hidden),
+            body = stringResource(R.string.panel_edit_hidden_body),
+            confirm = stringResource(R.string.panel_edit_delete_confirm),
+            dismiss = stringResource(R.string.action_cancel),
+            onConfirm = { confirmDeleteHidden = false; actions.onDeleteHidden() },
+            onDismiss = { confirmDeleteHidden = false },
+        )
+    }
+}
+
+/** 编辑页看不到的组件：说明有几个、为什么看不到，给一个“清除”（仍要确认，点「完成」才写盘）。 */
+@Composable
+private fun HiddenWidgetsNote(count: Int, onClear: () -> Unit) {
+    val colors = LocalModbusColors.current
+    Row(
+        Modifier.fillMaxWidth().testTag("edit-hidden"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            stringResource(R.string.panel_edit_hidden_note, count), color = colors.muted, fontSize = 12.sp, lineHeight = 17.sp,
+            modifier = Modifier.weight(1f),
+        )
+        TextLink(stringResource(R.string.panel_edit_hidden_clear), onClear, Modifier.testTag("edit-hidden-clear"), color = colors.error)
     }
 }
 

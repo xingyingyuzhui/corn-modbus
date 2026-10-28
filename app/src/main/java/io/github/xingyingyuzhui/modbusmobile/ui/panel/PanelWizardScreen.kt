@@ -76,6 +76,9 @@ import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetForm
 import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetKinds
 import io.github.xingyingyuzhui.modbusmobile.application.panel.RawValue
 import io.github.xingyingyuzhui.modbusmobile.core.model.RegisterArea
+import io.github.xingyingyuzhui.modbusmobile.ui.components.FieldTileMenu
+import io.github.xingyingyuzhui.modbusmobile.ui.traffic.fcLongRes
+import io.github.xingyingyuzhui.modbusmobile.ui.workbench.fcLabel
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusCard
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusSwitchVisual
 import io.github.xingyingyuzhui.modbusmobile.ui.components.NumberInput
@@ -316,6 +319,7 @@ private fun DataStep(
             SourceSection(wizard, result, onForm)
             if (form.kind == WidgetKinds.BUTTON) WriteValueField(wizard, result, onForm)
             if (form.isTable) TableFields(wizard, result, onForm)
+            if (form.writesDevice && form.singleValueWrite) WriteFunctionField(form, onForm)
         }
     }
     if (form.usesConversion && form.type != DataType.ASCII) {
@@ -385,6 +389,33 @@ private fun ButtonLabelField(form: WidgetForm, onForm: (WidgetForm) -> Unit) {
         stringResource(R.string.panel_wiz_button_label), form.buttonLabel, Modifier.fillMaxWidth().testTag("wiz-button-label"),
         sub = null, keyboardType = KeyboardType.Text,
     ) { onForm(form.copy(buttonLabel = it.take(WidgetForm.MAX_BUTTON_LABEL))) }
+}
+
+/**
+ * 写入功能码：单个值默认 FC05 / FC06，可改成 FC15 / FC16（有的设备只认“写多个”）。
+ * 多字类型（32 位 / F32）本来就是 FC16，不显示这一格。
+ */
+@Composable
+private fun WriteFunctionField(form: WidgetForm, onForm: (WidgetForm) -> Unit) {
+    val coil = form.area == RegisterArea.COIL
+    FieldTileMenu(
+        stringResource(R.string.panel_wiz_write_fc),
+        form.forceMultiple,
+        listOf(false, true),
+        { force ->
+            val code = when {
+                coil && force -> 0x0F
+                coil -> 0x05
+                force -> 0x10
+                else -> 0x06
+            }
+            "${fcLabel(code)} " + stringResource(fcLongRes(code))
+        },
+        { onForm(form.copy(forceMultiple = it)) },
+        Modifier.fillMaxWidth().testTag("wiz-write-fc"),
+        mono = false,
+        optionTag = { if (it) "wiz-write-fc-multi" else "wiz-write-fc-single" },
+    )
 }
 
 /** 寄存器表的配置：行数（地址范围实时显示）+ “允许在面板上修改”（默认关；输入类区域只读，不能开）。 */

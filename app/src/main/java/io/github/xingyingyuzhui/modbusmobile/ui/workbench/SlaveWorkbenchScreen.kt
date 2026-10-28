@@ -99,7 +99,7 @@ private fun SlavePortrait(model: SlaveViewModel, settings: UiSettings, target: C
             SaveFailedNote(model)
             AreaSegment(model)
             AreaTable(model, settings, landscape = false)
-            SecondaryButton(stringResource(R.string.slave_add_range), model::openAddRange, Modifier.fillMaxWidth(), compact = true)
+            RangeButtons(model)
             SimulationRules(model)
         }
     }
@@ -121,7 +121,7 @@ private fun SlaveLandscape(model: SlaveViewModel, settings: UiSettings, target: 
             UnitRow(model)
             SaveFailedNote(model)
             AreaSegment(model)
-            SecondaryButton(stringResource(R.string.slave_add_range), model::openAddRange, Modifier.fillMaxWidth(), compact = true)
+            RangeButtons(model)
         }
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AreaTable(model, settings, landscape = true)
@@ -283,6 +283,21 @@ private fun AreaTable(model: SlaveViewModel, settings: UiSettings, landscape: Bo
     )
 }
 
+/** “＋ 添加地址段” | “－ 删除地址段”：当前区没有地址时删除不可点。 */
+@Composable
+private fun RangeButtons(model: SlaveViewModel) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SecondaryButton(stringResource(R.string.slave_add_range), model::openAddRange, Modifier.weight(1f).testTag("slave-add-range-open"), compact = true)
+        SecondaryButton(
+            stringResource(R.string.slave_remove_range),
+            model::openRemoveRange,
+            Modifier.weight(1f).testTag("slave-remove-range-open"),
+            enabled = model.rowsOf(model.area).isNotEmpty(),
+            compact = true,
+        )
+    }
+}
+
 @Composable
 private fun UnitRow(model: SlaveViewModel) {
     val units by model.units.collectAsStateWithLifecycle()
@@ -400,6 +415,36 @@ private fun SlaveSheets(model: SlaveViewModel) {
             }
             request.error?.let { Text(it.resolve(), color = colors.error, fontSize = 12.sp) }
             SheetButtons(stringResource(R.string.slave_add_confirm), model::cancelAddRange, model::commitAddRange, "slave-add-range")
+        }
+    }
+    model.removeRange?.let { request ->
+        InPageSheet(stringResource(R.string.slave_remove_range_title), model::cancelRemoveRange, tag = "slave-remove-range") {
+            ChipRow(
+                SlaveAreas,
+                { it == request.area },
+                { areaShortName(it) },
+                { next -> model.updateRemoveRange { copy(area = next) } },
+                design = true,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NumberInput(
+                    stringResource(R.string.slave_add_start),
+                    request.start,
+                    Modifier.weight(1f).testTag("slave-remove-start"),
+                    keyboardType = KeyboardType.Number,
+                    onValue = { model.updateRemoveRange { copy(start = it) } },
+                )
+                NumberInput(
+                    stringResource(R.string.slave_add_count),
+                    request.count,
+                    Modifier.weight(1f).testTag("slave-remove-count"),
+                    keyboardType = KeyboardType.Number,
+                    onValue = { model.updateRemoveRange { copy(count = it) } },
+                )
+            }
+            Text(stringResource(R.string.slave_remove_range_note, model.unit), color = colors.muted, fontSize = 12.sp, lineHeight = 17.sp)
+            request.error?.let { Text(it.resolve(), color = colors.error, fontSize = 12.sp) }
+            SheetButtons(stringResource(R.string.slave_remove_confirm), model::cancelRemoveRange, model::commitRemoveRange, "slave-remove-range", danger = true)
         }
     }
     model.addUnit?.let { request ->

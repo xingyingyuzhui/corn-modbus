@@ -96,6 +96,7 @@ fun PanelScreen() {
                 onMove = model::moveWidget,
                 onSpan = model::setSpan,
                 onDelete = model::deleteWidget,
+                onDeleteHidden = model::deleteHiddenWidgets,
                 onSelectPanel = model::selectEditPanel,
                 onAddPanel = model::addPanel,
                 onDeletePanel = model::deletePanel,

@@ -51,6 +51,11 @@ data class Widget(
     val tableRows: Int = 0,
     /** 寄存器表：允许在面板上改值（每行一个 ✎，仍然逐次确认）。默认关。 */
     val tableWritable: Boolean = false,
+    /**
+     * 写入功能码（开关 / 按钮 / 可写寄存器表）：false = 单个值用 FC05 / FC06（多字自动 FC16）；
+     * true = 一律用 FC15 / FC16（有些设备不支持 FC05 / FC06）。和工作台的“强制 15/16”一样。
+     */
+    val forceMultiple: Boolean = false,
     /** 曲线组件的配置（[kind] == [WidgetKinds.CURVE] 时非空；此时 [point] 为空，点位在各系列里）。 */
     val curve: CurveConfig? = null,
     val raw: String? = null,

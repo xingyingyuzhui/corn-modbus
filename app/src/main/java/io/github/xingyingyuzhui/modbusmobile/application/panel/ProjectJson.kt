@@ -72,6 +72,7 @@ object ProjectJson {
                 put("tableRows", w.tableRows)
                 put("tableWritable", w.tableWritable)
             }
+            if (w.forceMultiple) put("forceMultiple", true)
             if (w.states.isNotEmpty()) {
                 put(
                     "states",
@@ -215,6 +216,7 @@ object ProjectJson {
             writeValue = if (obj.has("writeValue") && !obj.isNull("writeValue")) obj.optDouble("writeValue", Double.NaN).takeIf { !it.isNaN() } else null,
             tableRows = if (kind == WidgetKinds.REGISTER_TABLE) obj.optInt("tableRows", 0) else 0,
             tableWritable = kind == WidgetKinds.REGISTER_TABLE && obj.optBoolean("tableWritable", false),
+            forceMultiple = obj.optBoolean("forceMultiple", false),
         )
         // 开关 / 按钮的额外规则（开关必须读得到状态、按钮必须有合法的预设值）；不满足就原样保留，不让它在面板上出现一个写不对的控件
         WidgetWrites.problem(widget)?.let { return preserved("的配置不合法（$it）") }

@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.width
 import io.github.xingyingyuzhui.modbusmobile.ui.workbench.SlaveStatsTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.assertIsNotEnabled
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.xingyingyuzhui.modbusmobile.application.ConnectionTarget
 import io.github.xingyingyuzhui.modbusmobile.application.MemorySettingsRepository
@@ -104,6 +106,30 @@ class SlaveScreenshotTest {
         compose.waitForIdle()
         // 线圈 0 原来是 ON，点“ON”那一行后翻成 OFF；其余不变
         assertEquals(listOf(false, false, true, false), bank.bits(1, RegisterArea.COIL).map { it.value })
+    }
+
+    /** 「－ 删除地址段」浮层：默认填当前区第一段连续地址（HR0 起 5 个）。 */
+    @Test
+    fun slave_remove_range_dark_portrait() {
+        show(ThemeMode.DARK, ConnectionTarget.Demo, bank())
+        compose.onNodeWithTag("slave-remove-range-open").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun removeRangeSheetDeletesTheDefaultRunAndLeavesOtherAreas() {
+        val bank = bank()
+        show(ThemeMode.DARK, ConnectionTarget.Demo, bank)
+        compose.onNodeWithTag("slave-remove-range-open").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("slave-remove-range-confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(emptyList<Int>(), bank.words(1, RegisterArea.HOLDING_REGISTER).map { it.address })
+        assertEquals(2, bank.words(1, RegisterArea.INPUT_REGISTER).size)
+        assertEquals(4, bank.bits(1, RegisterArea.COIL).size)
+        // 这个区删空了：删除按钮不可点
+        compose.onNodeWithTag("slave-remove-range-open").assertIsNotEnabled()
     }
 
     private fun bank(): InMemoryRegisterBank = InMemoryRegisterBank().also { bank ->

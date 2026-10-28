@@ -37,6 +37,7 @@ import io.github.xingyingyuzhui.modbusmobile.application.panel.Panel
 import io.github.xingyingyuzhui.modbusmobile.application.panel.PointSnapshot
 import io.github.xingyingyuzhui.modbusmobile.application.panel.Project
 import io.github.xingyingyuzhui.modbusmobile.application.panel.Widget
+import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetKinds
 import io.github.xingyingyuzhui.modbusmobile.core.model.Role
 import io.github.xingyingyuzhui.modbusmobile.ui.panel.EditActions
 import io.github.xingyingyuzhui.modbusmobile.ui.panel.EditError
@@ -87,6 +88,7 @@ class PanelEditTest {
         onCancel = { calls += "cancel" },
         onAddWidget = { calls += "addWidget" },
         onOpenWidget = { calls += "open:$it" },
+        onDeleteHidden = { calls += "deleteHidden" },
     )
 
     private fun editState(project: Project = PanelFixtures.project(), panelId: String = "p1", dirty: Boolean = false, error: EditError? = null) =
@@ -374,6 +376,33 @@ class PanelEditTest {
         compose.onNodeWithText("面板里的 6 个组件会一起删除", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("edit-dialog-confirm").performClick()
         assertEquals(listOf("deletePanel"), calls)
+    }
+
+    /** 读不懂 / 配置不完整的组件在编辑页不画卡，以前删不掉；现在有一行说明 + 「清除」（确认后才清）。 */
+    @Test fun hiddenWidgetsAreCountedAndCanBeClearedAfterConfirm() {
+        val hidden = listOf(
+            Widget("future", "future_kind", raw = "{\"id\":\"future\",\"kind\":\"future_kind\"}"),
+            Widget("noPoint", WidgetKinds.NUMBER, "x"),
+        )
+        val project = Project("default", "x", listOf(Panel("p1", "机房 A", widgets = PanelFixtures.widgets + hidden), Panel("p2", "冷站")))
+        showEditor(editState(project))
+        compose.onNodeWithText("另有 2 个组件不显示", substring = true, useUnmergedTree = true).assertIsDisplayed()
+        tap("edit-hidden-clear")
+        compose.waitForIdle()
+        compose.onNodeWithText("清除 2 个不显示的组件？").assertIsDisplayed()
+        compose.onNodeWithTag("edit-dialog-confirm").performClick()
+        assertEquals(listOf("deleteHidden"), calls)
+
+        // 删整个面板时，说明里的数量包括看不到的组件
+        calls.clear()
+        openSettings()
+        compose.onNodeWithTag("edit-delete-panel", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNodeWithText("面板里的 ${PanelFixtures.widgets.size + 2} 个组件会一起删除", substring = true).assertIsDisplayed()
+    }
+
+    @Test fun noHiddenWidgetsNoNote() {
+        showEditor()
+        assertEquals(0, count("edit-hidden"))
     }
 
     @Test fun emptyPanelSaysSoAndStillOffersTheAddCell() {

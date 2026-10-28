@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -194,6 +195,43 @@ class PanelWriteWizardTest {
         assertTrue(form().build("w", "p").ok)
         type("wiz-unit", "248")
         compose.onNodeWithText("范围 0–247（0 = 广播）", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+    }
+
+    // ---- 写入功能码 ----
+
+    @Test fun writeFunctionCodeIsAPickableDropdownForSingleValueWrites() {
+        show(wizardState(2, WidgetForm.forKind(WidgetKinds.SWITCH).copy(name = "压缩机")))
+        compose.onNodeWithText("FC05 写单个线圈", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("wiz-write-fc", useUnmergedTree = true).performScrollTo()
+        compose.onNode(hasClickAction() and hasAnyAncestor(hasTestTag("wiz-write-fc")), useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("wiz-write-fc-multi", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        assertTrue(form().forceMultiple)
+        compose.onNodeWithText("FC15 写多个线圈", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        assertTrue(form().build("w", "p").widget!!.forceMultiple)
+    }
+
+    @Test fun registerButtonOffersFc06OrFc16AndMultiWordTypesHideTheChoice() {
+        show(wizardState(2, WidgetForm.forKind(WidgetKinds.BUTTON).withArea(RegisterArea.HOLDING_REGISTER).copy(name = "设定", writeValue = "1", forceMultiple = true)))
+        compose.onNodeWithText("FC16 写多个寄存器", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        state = state!!.copy(form = form().withType(DataType.F32))
+        compose.waitForIdle()
+        assertEquals("F32 本来就是 FC16，不显示这一格", 0, count("wiz-write-fc"))
+    }
+
+    @Test fun readOnlyTableHasNoWriteFunctionCode() {
+        show(wizardState(2, WidgetForm.forKind(WidgetKinds.REGISTER_TABLE).copy(name = "表")))
+        assertEquals(0, count("wiz-write-fc"))
+        state = state!!.copy(form = form().copy(tableWritable = true))
+        compose.waitForIdle()
+        assertEquals(1, count("wiz-write-fc"))
+    }
+
+    @Test fun render_wizard_switch_fc15_dark() {
+        show(wizardState(2, WidgetForm.forKind(WidgetKinds.SWITCH).copy(name = "压缩机", address = "0", forceMultiple = true)))
+        compose.onNodeWithTag("wiz-write-fc", useUnmergedTree = true).performScrollTo()
+        shot("wizard_switch_fc15_dark.png")
     }
 
     @Test fun previewButtonIsNotInteractive() {

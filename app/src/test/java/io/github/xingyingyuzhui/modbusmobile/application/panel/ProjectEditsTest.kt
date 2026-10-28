@@ -23,6 +23,17 @@ class ProjectEditsTest {
 
     private fun ids(p: Project, panel: String) = p.panels.first { it.id == panel }.widgets.map { it.id }
 
+    @Test fun deleteWidgetCannotReachHiddenWidgetsButDeleteHiddenClearsThem() {
+        val incomplete = Widget("noPoint", WidgetKinds.NUMBER, "x")
+        val start = ProjectEdits.addWidget(project(), "a", incomplete)
+        assertEquals(ids(start, "a"), ids(ProjectEdits.deleteWidget(start, "a", "hidden"), "a"))
+
+        val p = ProjectEdits.deleteHidden(start, "a")
+        assertEquals(listOf("1", "2", "3", "4"), ids(p, "a"))
+        // 只动这一个面板
+        assertEquals(listOf("5"), ids(p, "b"))
+    }
+
     @Test fun renameTrimsToMaxLengthAndLeavesOthers() {
         val p = ProjectEdits.renamePanel(project(), "a", "x".repeat(40))
         assertEquals(ProjectEdits.MAX_NAME, p.panels[0].name.length)

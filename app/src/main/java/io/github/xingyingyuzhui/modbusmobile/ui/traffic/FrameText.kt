@@ -29,7 +29,7 @@ private fun fcShortRes(fc: Int): Int? = when (fc) {
 }
 
 @StringRes
-private fun fcLongRes(fc: Int): Int = when (fc) {
+internal fun fcLongRes(fc: Int): Int = when (fc) {
     0x01 -> R.string.fc_long_01
     0x02 -> R.string.fc_long_02
     0x03 -> R.string.fc_long_03

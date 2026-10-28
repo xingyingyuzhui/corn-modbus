@@ -43,7 +43,7 @@ data class SlaveRow(
 /** 正在改值的那一格（只有字区；位区点一下直接翻转）。 */
 data class SlaveEdit(val area: RegisterArea, val address: Int, val draft: String, val error: UiText? = null)
 
-/** “＋ 添加地址段”浮层。 */
+/** “＋ 添加地址段”浮层；“删除地址段”浮层也用它（默认填当前区的第一段）。 */
 data class SlaveAddRange(
     val area: RegisterArea,
     val start: String = "0",
@@ -89,6 +89,10 @@ class SlaveViewModel(
     var addUnit by mutableStateOf<SlaveAddUnit?>(null)
         private set
 
+    /** “删除地址段”浮层。 */
+    var removeRange by mutableStateOf<SlaveAddRange?>(null)
+        private set
+
     /** 待确认删除的 Unit。 */
     var removeUnit by mutableStateOf<Int?>(null)
         private set
@@ -128,6 +132,7 @@ class SlaveViewModel(
                 addRange = null
                 addUnit = null
                 removeUnit = null
+                removeRange = null
                 if (next == null) {
                     rows = emptyMap()
                     return@collectLatest
@@ -262,6 +267,61 @@ class SlaveViewModel(
         save()
     }
 
+    // ---- 删除地址段 ----
+
+    /** 默认填当前区的第一段连续地址；当前区没有地址时不打开。 */
+    fun openRemoveRange() {
+        val addresses = rowsOf(area).map { it.address }
+        val first = addresses.firstOrNull() ?: return
+        val count = addresses.zipWithNext().takeWhile { (a, b) -> b == a + 1 }.size + 1
+        removeRange = SlaveAddRange(area, first.toString(), count.coerceAtMost(MaxRangeCount).toString())
+    }
+
+    fun updateRemoveRange(update: SlaveAddRange.() -> SlaveAddRange) {
+        removeRange = removeRange?.update()?.copy(error = null)
+    }
+
+    fun cancelRemoveRange() {
+        removeRange = null
+    }
+
+    /**
+     * 删掉这段里已有的地址（没有的跳过）；目标和这段重叠的模拟规则一起删，否则规则留着却写不进去。
+     * 这段里一个已有地址都没有时报错，浮层留着。
+     */
+    fun commitRemoveRange() {
+        val request = removeRange ?: return
+        val start = request.start.trim().toIntOrNull()
+        val count = request.count.trim().toIntOrNull()
+        if (start == null || count == null || start !in 0..MaxAddress || count !in 1..MaxRemoveCount || start + count - 1 > MaxAddress) {
+            removeRange = request.copy(error = UiText.Of(R.string.error_slave_range, listOf(MaxRemoveCount)))
+            return
+        }
+        val target = bank ?: return
+        val end = start + count - 1
+        if (rowsOf(request.area).none { it.address in start..end }) {
+            removeRange = request.copy(error = UiText.Of(R.string.error_slave_remove_none))
+            return
+        }
+        dropRules { it.unitId == unit && it.area == request.area && it.address <= end && it.address + it.count - 1 >= start }
+        target.remove(unit, request.area, start, count)
+        edit = null
+        area = request.area
+        removeRange = null
+        publish(target)
+        save()
+    }
+
+    /** 删掉目标满足 [matches] 的模拟规则；打开着的规则编辑页如果是被删的那条，也一起关掉。 */
+    private fun dropRules(matches: (io.github.xingyingyuzhui.modbusmobile.core.slave.SimulationTarget) -> Boolean) {
+        val engine = session.simulation.value ?: return
+        val current = engine.states.value.map { it.rule }
+        val kept = current.filterNot { matches(it.target) }
+        if (kept.size == current.size) return
+        engine.setRules(kept)
+        if (ruleDraft?.id != null && kept.none { it.id == ruleDraft?.id }) discardRule()
+    }
+
     // ---- 增删 Unit ----
 
     fun openAddUnit() {
@@ -309,14 +369,24 @@ class SlaveViewModel(
         removeUnit = null
     }
 
-    /** 删掉的 Unit 不再响应；它的地址和值不再保存（寄存器库里的值本次会话内还在，断开后就没了）。 */
+    /**
+     * 删掉的 Unit 不再响应；它的地址、值和以它为目标的模拟规则一起删掉、不再保存。
+     * 寄存器库里也清掉：同一次会话里再加回这个 Unit 时是空的，不会冒出旧值。
+     */
     fun confirmRemoveUnit() {
         val target = removeUnit ?: return
         removeUnit = null
         val next = units.value - target
         if (next.isEmpty()) return
         viewModelScope.launch {
-            if (!session.setSlaveUnits(next)) saveFailed = true
+            if (!session.setSlaveUnits(next)) {
+                saveFailed = true
+                return@launch
+            }
+            dropRules { it.unitId == target }
+            bank?.removeUnit(target)
+            if (ruleDraft?.unit == target) discardRule()
+            save()
         }
     }
 
@@ -444,6 +514,9 @@ class SlaveViewModel(
     companion object {
         const val MaxAddress = 0xFFFF
         const val MaxRangeCount = 125
+
+        /** 删除一次最多 2000 个地址（覆盖一个区里常见的整段配置）。 */
+        const val MaxRemoveCount = 2000
         private const val FlashWindowMs = 2_000L
         private const val FreshSeconds = 60L
         private val SlaveAreasInOrder = io.github.xingyingyuzhui.modbusmobile.application.slave.SlaveAreas
