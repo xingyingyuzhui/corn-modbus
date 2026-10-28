@@ -148,9 +148,7 @@ internal class ArchiveGatherer(
         val running = session.state.value as? SessionState.Running ?: return null
         if (running.role != io.github.xingyingyuzhui.modbusmobile.core.model.Role.SLAVE) return null
         val bank = session.slaveBank.value ?: return null
-        val units = session.slaveUnits.value
-        if (units.isEmpty()) return null
-        return SlaveSetup.snapshot(bank, units, emptyList())
+        return SlaveSetup.snapshot(bank, session.slaveUnits.value, emptyList())
     }
 
     private fun pointValue(point: PointDefinition, snap: PointSnapshot?): PointValueExport = PointValueExport(

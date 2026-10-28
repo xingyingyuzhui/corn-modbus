@@ -160,6 +160,30 @@ class SlaveUnitsTest {
     }
 
     @Test
+    fun removingTheLastUnitShowsTheEmptyStateAndPlusAddsOneBack() {
+        session.slaveUnits.value = listOf(1)
+        show()
+        compose.onNodeWithTag("slave-remove-unit").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("slave-remove-confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(emptyList<Int>()), session.unitChanges)
+        assertEquals("Unit 1 的地址一并删掉", emptyList<Any>(), bank.words(1, RegisterArea.HOLDING_REGISTER))
+        compose.onNodeWithTag("slave-no-units").assertIsDisplayed()
+        compose.onNodeWithTag("slave-remove-unit").assertDoesNotExist()
+        compose.onNodeWithTag("slave-add-range-open").assertDoesNotExist()
+        compose.onNodeWithText("Unit 1").assertDoesNotExist()
+        compose.onNodeWithText("＋").performClick()
+        compose.waitForIdle()
+        type("slave-add-unit-value", "1")
+        compose.onNodeWithTag("slave-add-unit-confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(emptyList(), listOf(1)), session.unitChanges)
+        compose.onNodeWithTag("slave-no-units").assertDoesNotExist()
+        compose.onNodeWithText("Unit 1 还没有地址", substring = true).assertIsDisplayed()
+    }
+
+    @Test
     fun editingAValueInThePageSheetSavesTheSetup() {
         show()
         compose.onNodeWithText("11").performClick()

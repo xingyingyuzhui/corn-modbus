@@ -95,7 +95,23 @@ class SlaveSetupTest {
 
     @Test(expected = SlaveSetupJson.FormatException::class)
     fun fileWithoutAnyUsableUnitIsAFormatError() {
-        SlaveSetupJson.decode("""{"version":1,"units":[]}""")
+        SlaveSetupJson.decode("""{"version":1,"units":[{"unitId":999}]}""")
+    }
+
+    @Test(expected = SlaveSetupJson.FormatException::class)
+    fun fileWithoutUnitsKeyIsAFormatError() {
+        SlaveSetupJson.decode("""{"version":1}""")
+    }
+
+    @Test
+    fun zeroUnitsIsAValidSetupAndSurvivesTheFileStore() {
+        val empty = SlaveSetup(emptyList())
+        val decoded = SlaveSetupJson.decode(SlaveSetupJson.encode(empty))
+        assertEquals(empty, decoded.setup)
+        assertEquals(emptyList<String>(), decoded.warnings)
+        val store = FileSlaveSetupStore(tmp.newFolder())
+        assertTrue(store.save(empty))
+        assertEquals("删光的 Unit 不会被默认配置补回来", empty, store.load())
     }
 
     @Test

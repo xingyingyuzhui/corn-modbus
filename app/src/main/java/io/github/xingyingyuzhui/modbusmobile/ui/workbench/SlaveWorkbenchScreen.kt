@@ -97,10 +97,14 @@ private fun SlavePortrait(model: SlaveViewModel, settings: UiSettings, target: C
             SlaveStats(columns = 4)
             UnitRow(model)
             SaveFailedNote(model)
-            AreaSegment(model)
-            AreaTable(model, settings, landscape = false)
-            RangeButtons(model)
-            SimulationRules(model)
+            if (hasUnits(model)) {
+                AreaSegment(model)
+                AreaTable(model, settings, landscape = false)
+                RangeButtons(model)
+                SimulationRules(model)
+            } else {
+                NoUnitsNote()
+            }
         }
     }
 }
@@ -120,12 +124,18 @@ private fun SlaveLandscape(model: SlaveViewModel, settings: UiSettings, target: 
             SlaveStats(columns = 2)
             UnitRow(model)
             SaveFailedNote(model)
-            AreaSegment(model)
-            RangeButtons(model)
+            if (hasUnits(model)) {
+                AreaSegment(model)
+                RangeButtons(model)
+            }
         }
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            AreaTable(model, settings, landscape = true)
-            SimulationRules(model)
+            if (hasUnits(model)) {
+                AreaTable(model, settings, landscape = true)
+                SimulationRules(model)
+            } else {
+                NoUnitsNote()
+            }
         }
     }
 }
@@ -299,9 +309,30 @@ private fun RangeButtons(model: SlaveViewModel) {
 }
 
 @Composable
+private fun hasUnits(model: SlaveViewModel): Boolean = model.units.collectAsStateWithLifecycle().value.isNotEmpty()
+
+/** Unit 删光了：从站不应答任何请求，提示用上面的“＋”加回来。 */
+@Composable
+private fun NoUnitsNote() {
+    val colors = LocalModbusColors.current
+    val shape = RoundedCornerShape(CardRadius)
+    Text(
+        stringResource(R.string.slave_no_units),
+        color = colors.muted,
+        fontSize = 13.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.surface1, shape)
+            .border(1.dp, colors.line, shape)
+            .padding(14.dp)
+            .testTag("slave-no-units"),
+    )
+}
+
+/** Unit 选择条 + “＋”；Unit 删光了也保留“＋”，好加回来。 */
+@Composable
 private fun UnitRow(model: SlaveViewModel) {
     val units by model.units.collectAsStateWithLifecycle()
-    if (units.isEmpty()) return
     val colors = LocalModbusColors.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
@@ -314,7 +345,7 @@ private fun UnitRow(model: SlaveViewModel) {
             }
             SelectChip("＋", selected = false, description = stringResource(R.string.cd_add_unit), minWidth = 48.dp, onClick = model::openAddUnit)
         }
-        if (units.size > 1) {
+        if (model.unit in units) {
             Text(
                 stringResource(R.string.slave_remove_unit, model.unit),
                 color = colors.error,
