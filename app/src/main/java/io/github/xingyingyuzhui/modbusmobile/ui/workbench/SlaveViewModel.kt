@@ -232,6 +232,7 @@ class SlaveViewModel(
     // ---- 添加地址段 ----
 
     fun openAddRange() {
+        if (unit !in units.value) return
         addRange = SlaveAddRange(area)
     }
 
@@ -362,7 +363,7 @@ class SlaveViewModel(
     }
 
     fun askRemoveUnit() {
-        if (units.value.size > 1) removeUnit = unit
+        if (unit in units.value) removeUnit = unit
     }
 
     fun cancelRemoveUnit() {
@@ -377,7 +378,6 @@ class SlaveViewModel(
         val target = removeUnit ?: return
         removeUnit = null
         val next = units.value - target
-        if (next.isEmpty()) return
         viewModelScope.launch {
             if (!session.setSlaveUnits(next)) {
                 saveFailed = true
@@ -386,6 +386,7 @@ class SlaveViewModel(
             dropRules { it.unitId == target }
             bank?.removeUnit(target)
             if (ruleDraft?.unit == target) discardRule()
+            bank?.let { publish(it) }
             save()
         }
     }
@@ -393,6 +394,7 @@ class SlaveViewModel(
     // ---- 模拟规则 ----
 
     fun openNewRule() {
+        if (unit !in units.value) return
         val first = rowsOf(area).firstOrNull()?.address ?: 0
         beginRule(RuleDraft.newFor(unit, area, first))
     }

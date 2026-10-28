@@ -29,13 +29,13 @@ data class SlaveUnitSetup(val unitId: Int, val regions: List<SlaveRegion>) {
  *
  * 保存的是“保存那一刻的值”：本地编辑、加地址段、增删 Unit、改模拟规则时整体快照一次；
  * 外部主站写入和模拟器写入不会单独触发保存。下次连接从站时按这里装进寄存器库。
+ * Unit 可以一个都没有：从站照常连接，但对任何请求都不应答（广播也不写入）。
  */
 data class SlaveSetup(
     val units: List<SlaveUnitSetup>,
     val rules: List<SimulationRule> = emptyList(),
 ) {
     init {
-        require(units.isNotEmpty()) { "至少要有一个 Unit" }
         require(units.map { it.unitId }.toSet().size == units.size) { "Unit ID 不能重复" }
     }
 

@@ -191,9 +191,40 @@ class DemoSessionTest {
         assertTrue("重建引擎后继续回应：$before → ${session.counters.value.responses}", session.counters.value.responses >= before + 2)
         assertTrue("不合法的 Unit 拒绝", !session.setSlaveUnits(listOf(0)))
         assertTrue("重复的 Unit 拒绝", !session.setSlaveUnits(listOf(1, 1)))
-        assertTrue("不能删光", !session.setSlaveUnits(emptyList()))
         session.disconnect()
         assertTrue("断开后不能改", !session.setSlaveUnits(listOf(1)))
+    }
+
+    @Test
+    fun removingEveryUnitStopsAnsweringSavesEmptyAndCanAddBack() = runTest {
+        val store = io.github.xingyingyuzhui.modbusmobile.application.slave.MemorySlaveSetupStore()
+        val session = session(store)
+        session.connect(ConnectionTarget.Demo, SerialSettings(responseTimeoutMs = 300, turnaroundMs = 10), Role.SLAVE)
+        advanceTimeBy(2_100)
+        runCurrent()
+        assertTrue(session.counters.value.responses >= 2)
+        assertTrue("可以删光 Unit", session.setSlaveUnits(emptyList()))
+        assertEquals(emptyList<Int>(), session.slaveUnits.value)
+        assertEquals("保存的是 0 个 Unit", emptyList<Int>(), store.current.unitIds)
+        assertTrue(session.saveSlaveSetup())
+        val silent = session.counters.value.responses
+        // 演示主站继续每秒读 Unit 1，空 Unit 的从站一律不应答
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals("0 个 Unit 不应答", silent, session.counters.value.responses)
+        assertTrue("仍能加回", session.setSlaveUnits(listOf(1)))
+        advanceTimeBy(2_100)
+        runCurrent()
+        assertTrue("加回后恢复应答", session.counters.value.responses >= silent + 1)
+        session.disconnect()
+        // 下次连接按保存的空配置启动，也不应答
+        store.save(io.github.xingyingyuzhui.modbusmobile.application.slave.SlaveSetup(emptyList()))
+        session.connect(ConnectionTarget.Demo, SerialSettings(responseTimeoutMs = 300, turnaroundMs = 10), Role.SLAVE)
+        assertEquals(emptyList<Int>(), session.slaveUnits.value)
+        advanceTimeBy(3_100)
+        runCurrent()
+        assertEquals(0L, session.counters.value.responses)
+        session.disconnect()
     }
 
     @Test

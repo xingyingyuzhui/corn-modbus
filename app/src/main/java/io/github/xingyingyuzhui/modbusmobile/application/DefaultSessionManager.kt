@@ -257,7 +257,7 @@ class DefaultSessionManager(
     }
 
     override suspend fun setSlaveUnits(units: List<Int>): Boolean {
-        if (units.isEmpty() || units.any { it !in 1..247 } || units.toSet().size != units.size) return false
+        if (units.any { it !in 1..247 } || units.toSet().size != units.size) return false
         return gate.withLock {
             val running = _state.value as? SessionState.Running ?: return false
             if (running.role != Role.SLAVE) return false
@@ -276,7 +276,7 @@ class DefaultSessionManager(
 
     override fun saveSlaveSetup(): Boolean {
         val bank = _slaveBank.value ?: return false
-        val units = _slaveUnits.value.takeIf { it.isNotEmpty() } ?: return false
+        val units = _slaveUnits.value
         val rules = _simulation.value?.states?.value?.map { it.rule }.orEmpty()
         return slaveSetupStore.save(SlaveSetup.snapshot(bank, units, rules))
     }

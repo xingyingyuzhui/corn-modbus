@@ -180,6 +180,8 @@ class SlaveSession : SessionManager {
     override val state = MutableStateFlow<SessionState>(SessionState.Running(Role.SLAVE, ConnectionTarget.Demo, 1))
     override val traffic = MutableSharedFlow<TrafficEvent>()
     override val slaveBank = banks
+    // 真实会话在从站模式下总有 Unit 列表；空列表现在表示“Unit 删光了”。
+    override val slaveUnits = MutableStateFlow(listOf(1))
     override val usbDevices = MutableStateFlow<List<UsbDeviceSummary>>(emptyList())
     override val echoDetected = MutableStateFlow<Boolean?>(null)
     override val serial = MutableStateFlow<SerialSettings?>(null)

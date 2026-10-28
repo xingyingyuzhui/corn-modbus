@@ -67,7 +67,7 @@ object SlaveSetupJson {
         val warnings = mutableListOf<String>()
         val units = mutableListOf<SlaveUnitSetup>()
         val keptUnits = mutableListOf<String>()
-        val unitArray = root.optJSONArray("units") ?: JSONArray()
+        val unitArray = root.optJSONArray("units") ?: throw FormatException("缺少 units")
         for (i in 0 until unitArray.length()) {
             val obj = unitArray.optJSONObject(i)
             val decoded = obj?.let { runCatching { decodeUnit(it) }.getOrNull() }
@@ -83,7 +83,8 @@ object SlaveSetupJson {
                 else -> units += decoded
             }
         }
-        if (units.isEmpty()) throw FormatException("没有可用的 Unit")
+        // "units": [] 是合法的（用户删光了 Unit）；有条目但一个都读不懂才算坏文件。
+        if (units.isEmpty() && keptUnits.isNotEmpty()) throw FormatException("没有可用的 Unit")
         val rules = mutableListOf<SimulationRule>()
         val keptRules = mutableListOf<String>()
         val ruleArray = root.optJSONArray("rules") ?: JSONArray()

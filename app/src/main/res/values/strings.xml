@@ -671,6 +671,7 @@
     <string name="wave_random">随机</string>
     <string name="wave_sequence">序列</string>
     <string name="slave_save_failed">从站配置没有保存成功（文件只读或写入失败），断开后这些改动会丢失。</string>
+    <string name="slave_no_units">还没有 Unit：外部主站的请求一律不应答，广播也不写入。点上面的「＋」添加 Unit。</string>
     <string name="slave_unit_empty">Unit %1$d 还没有地址，外部主站读它会收到「非法数据地址」。点下面的「＋ 添加地址段」创建。</string>
     <string name="rule_err_number">请输入绝对值不超过 10¹² 的有限数字</string>
     <string name="rule_err_address">地址 0–65535</string>
