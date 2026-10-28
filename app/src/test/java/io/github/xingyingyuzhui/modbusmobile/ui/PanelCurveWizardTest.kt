@@ -166,7 +166,12 @@ class PanelCurveWizardTest {
     }
 
     private fun bounds(tag: String) = compose.onNodeWithTag(tag, useUnmergedTree = true).getBoundsInRoot()
-    private fun touch(tag: String) = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().touchBoundsInRoot
+    /** 带 tag 的包装 Box 本身不可点时，量它里面的可点节点（chip 的 48dp 热区不占布局，包装 Box 只有视觉高）。 */
+    private fun touch(tag: String): androidx.compose.ui.geometry.Rect {
+        val node = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode()
+        val clickable = { n: androidx.compose.ui.semantics.SemanticsNode -> androidx.compose.ui.semantics.SemanticsActions.OnClick in n.config }
+        return (if (clickable(node)) node else node.children.firstOrNull(clickable) ?: node).touchBoundsInRoot
+    }
     private fun count(tag: String) = compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().size
     private val dp get() = compose.density.density
     private fun curve() = state!!.curve!!
@@ -196,8 +201,7 @@ class PanelCurveWizardTest {
         compose.onNodeWithTag("wiz-step", useUnmergedTree = true).assertContentDescriptionContains("第 2 步", substring = true)
         // v3 3-4：第 2 步 = 预览 + 系列 + 时间窗口 + “采样与内存”（折叠）
         for (tag in listOf(
-            "wiz-preview", "wiz-series-title", "wiz-series-add", "wiz-series-row-0", "wiz-series-row-1", "wiz-window-60", "wiz-window-300", "wiz-window-600",
-            "wiz-window-3600", "wiz-window-custom", "wiz-sampling-block",
+            "wiz-preview", "wiz-series-title", "wiz-series-add", "wiz-series-row-0", "wiz-series-row-1", "wiz-window", "wiz-sampling-block",
         )) {
             runCatching { compose.onNodeWithTag(tag, useUnmergedTree = true).performScrollTo() }
             assertEquals(tag, 1, count(tag))
@@ -253,9 +257,14 @@ class PanelCurveWizardTest {
 
     @Test fun windowPresetsSelectAndCustomRevealsMinutesInput() {
         show(curveState(2, CurveForm(listOf(temp))))
+        // 时间窗口是下拉格：点格子弹菜单，预设和「自定义」都在菜单里
+        tap("wiz-window")
+        for (sec in listOf(60, 300, 600, 3600)) assertEquals("菜单里有 $sec", 1, count("wiz-window-$sec"))
         tap("wiz-window-600")
         assertEquals(600, curve().windowSec)
+        assertEquals("选完菜单关闭", 0, count("wiz-window-60"))
         assertEquals(0, count("wiz-window-minutes"))
+        tap("wiz-window")
         tap("wiz-window-custom")
         assertEquals(null, curve().windowSec)
         assertEquals(1, count("wiz-window-minutes"))
@@ -313,7 +322,7 @@ class PanelCurveWizardTest {
 
     @Test fun configTouchTargetsAreAtLeast48dp() {
         show(curveState(2, CurveForm(listOf(temp, press))))
-        for (tag in listOf("wiz-series-add", "wiz-series-row-0", "wiz-window-60", "wiz-window-custom")) assertTouch(tag)
+        for (tag in listOf("wiz-series-add", "wiz-series-row-0", "wiz-window")) assertTouch(tag)
         // 第 3 步的坐标轴 / 图例 / 游标同样 ≥48dp
         tap("wiz-next")
         for (tag in listOf("wiz-grid", "wiz-cursor")) assertTouch(tag)
@@ -424,7 +433,7 @@ class PanelCurveWizardTest {
 
     @Test fun render_wizard_curve_errors_dark() {
         show(curveState(2, two.copy(windowSec = null, customMinutes = "", maxPoints = "5"), showErrors = true))
-        runCatching { compose.onNodeWithTag("wiz-window-custom", useUnmergedTree = true).performScrollTo() }
+        runCatching { compose.onNodeWithTag("wiz-window", useUnmergedTree = true).performScrollTo() }
         shot("wizard_curve_errors_dark.png")
     }
 

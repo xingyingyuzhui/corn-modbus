@@ -45,24 +45,12 @@ class ConnectionViewModel(
     var gapText by mutableStateOf(defaults.defaultInterRequestMs.toString())
     var advancedOpen by mutableStateOf(false)
     var helpOpen by mutableStateOf(false)
-    var customPinned by mutableStateOf(false)
-
-    val preset: SerialPresetUi?
-        get() = if (customPinned) null else SerialPresetUi.matching(baud, dataBits, parity, stopBits)
 
     val validation: TimeoutGapValidation
         get() = validateTimeoutGap(timeoutText, gapText)
 
     val wireLabel: String
         get() = wireLabel(baud, dataBits, parity, stopBits)
-
-    fun selectPreset(preset: SerialPresetUi) {
-        customPinned = false
-        baud = preset.baudRate
-        dataBits = preset.dataBits
-        parity = preset.parity
-        stopBits = preset.stopBits
-    }
 
     fun applyDefaults(new: UiSettings) {
         val old = applied
@@ -71,10 +59,6 @@ class ConnectionViewModel(
         if (echoMode == old.defaultEcho) echoMode = new.defaultEcho
         broadcastWaitMs = new.defaultBroadcastWaitMs
         applied = new
-    }
-
-    fun selectCustom() {
-        customPinned = true
     }
 
     fun refresh() {

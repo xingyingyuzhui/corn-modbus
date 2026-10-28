@@ -129,7 +129,10 @@ class PanelFullscreenTest {
         .getOrNull(SemanticsProperties.Text)?.joinToString("").orEmpty()
 
     private fun assertTouch(tag: String) {
-        val b = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().touchBoundsInRoot
+        // 带 tag 的包装 Box 不可点时量里面的可点节点（chip 的 48dp 热区不占布局，包装 Box 只有视觉高）。
+        val node = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode()
+        val clickable = { n: androidx.compose.ui.semantics.SemanticsNode -> androidx.compose.ui.semantics.SemanticsActions.OnClick in n.config }
+        val b = (if (clickable(node)) node else node.children.firstOrNull(clickable) ?: node).touchBoundsInRoot
         val min = compose.density.density * 48f
         assertTrue("$tag 触控 ${b.width}x${b.height}px", b.width >= min - 0.5f && b.height >= min - 0.5f)
     }

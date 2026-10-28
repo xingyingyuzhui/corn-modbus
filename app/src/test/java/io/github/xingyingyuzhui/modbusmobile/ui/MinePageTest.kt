@@ -109,7 +109,8 @@ class MinePageTest {
         compose.onNodeWithText("外观").assertIsDisplayed()
         compose.onNodeWithText("显示与格式").assertIsDisplayed()
         compose.onNodeWithText("通信默认值").assertIsDisplayed()
-        compose.onNodeWithTag("mine-settings").assertIsDisplayed()
+        // 页头不再有 ⚙ 设置入口：分组列表就是唯一入口
+        compose.onNodeWithTag("mine-settings").assertDoesNotExist()
         compose.onNodeWithText("导出与分享").assertIsDisplayed()
         compose.onNodeWithText("历史会话").assertIsDisplayed()
         compose.onNodeWithText("本地存储").assertIsDisplayed()
@@ -138,17 +139,6 @@ class MinePageTest {
         compose.onNodeWithTag("sub-back").assertHasClickAction()
         open("sub-back")
         compose.onNodeWithTag("mine-row-display").assertIsDisplayed()
-    }
-
-    @Test
-    fun gearOpensTheFullSettingsPage() {
-        show()
-        open("mine-settings")
-        compose.onNodeWithTag("sub-title").assertTextContains("设置")
-        compose.onNodeWithTag("sw-keep").assertExists()
-        compose.onNodeWithTag("sw-hex").assertExists()
-        compose.onNodeWithTag("sw-coil-warning").assertExists()
-        compose.onNodeWithTag("comm-timeout").assertExists()
     }
 
     @Test
@@ -218,9 +208,13 @@ class MinePageTest {
         compose.onNodeWithTag("comm-save").assertIsNotEnabled()
         open("comm-cancel")
 
+        // 回显三选一：点行直接弹菜单，选中即存，不进编辑器
         open("comm-echo")
+        compose.onNodeWithTag("comm-editor").assertDoesNotExist()
+        compose.onNodeWithTag("comm-echo-menu").assertExists()
         compose.onNodeWithText("自动").performClick()
-        open("comm-save")
+        compose.waitForIdle()
+        compose.onNodeWithTag("comm-echo-menu").assertDoesNotExist()
         assertEquals(io.github.xingyingyuzhui.modbusmobile.application.EchoMode.AUTO, repository.settings.value.defaultEcho)
         compose.onNodeWithTag("comm-echo").assertTextContains("自动")
     }

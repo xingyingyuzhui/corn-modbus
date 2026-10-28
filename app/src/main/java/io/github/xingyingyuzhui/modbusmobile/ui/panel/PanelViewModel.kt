@@ -190,6 +190,7 @@ class PanelViewModel(
     fun moveWidget(widgetId: String, targetId: String) = change { p, id -> ProjectEdits.moveWidget(p, id, widgetId, targetId) }
     fun setSpan(widgetId: String, columns: Int, rows: Int) = change { p, id -> ProjectEdits.setSpan(p, id, widgetId, columns, rows) }
     fun deleteWidget(widgetId: String) = change { p, id -> ProjectEdits.deleteWidget(p, id, widgetId) }
+    fun deleteHiddenWidgets() = change { p, id -> ProjectEdits.deleteHidden(p, id) }
 
     fun selectEditPanel(id: String) {
         val e = _edit.value ?: return

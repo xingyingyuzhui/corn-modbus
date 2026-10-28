@@ -50,6 +50,13 @@ object ProjectEdits {
     fun deleteWidget(project: Project, panelId: String, widgetId: String): Project =
         project.mapPanel(panelId) { panel -> panel.copy(widgets = panel.widgets.filterNot { it.id == widgetId && it.raw == null }) }
 
+    /**
+     * 删掉面板里界面上看不到的组件：读不懂的（[Widget.raw]，更新版本才有的类型 / 字段不合法）和配置不完整的
+     * （没有点位、曲线没有系列、开关 / 按钮配置自相矛盾）。编辑页不显示它们，[deleteWidget] 也删不到，只能从这里清。
+     */
+    fun deleteHidden(project: Project, panelId: String): Project =
+        project.mapPanel(panelId) { panel -> panel.copy(widgets = panel.widgets.filter { it.isUsable }) }
+
     /** 新面板叫“面板 N”（N 取没被占用的最小正整数），加在最后。返回新工程和新面板 id。 */
     fun addPanel(project: Project, newId: () -> String = { UUID.randomUUID().toString().take(8) }): Pair<Project, String> {
         var n = 1

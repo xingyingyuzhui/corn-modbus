@@ -45,8 +45,6 @@
     <string name="role_master_hint">主动读写外部从站</string>
     <string name="role_slave_hint">响应外部主站</string>
 
-    <string name="preset_custom">…</string>
-    <string name="preset_custom_description">自定义</string>
     <string name="action_help">帮助</string>
     <string name="help_title">连接说明</string>
     <string name="help_role">主站：手机主动读写外部从站设备。\n从站：手机模拟从站，响应外部主站的请求。</string>
@@ -151,6 +149,7 @@
     <string name="panel_wiz_table_rows">行数</string>
     <string name="panel_wiz_table_rows_hint">从 %1$s 到 %2$s，共占用 %3$d 个%4$s</string>
     <string name="panel_wiz_err_rows">行数是 1–16</string>
+    <string name="panel_wiz_write_fc">写入功能码</string>
     <string name="panel_wiz_table_writable">允许在面板上修改</string>
     <string name="panel_wiz_table_writable_sub">默认关。打开后每行右侧有 ✎，改值也要先看写入帧、确认后才发。</string>
     <string name="panel_wiz_table_readonly_sub">输入类区域（输入寄存器 / 离散输入）只读，不能修改</string>
@@ -224,6 +223,10 @@
     <string name="panel_edit_name_blank">面板名称不能为空</string>
     <string name="panel_edit_new_panel">新建面板</string>
     <string name="panel_edit_empty">这个面板还没有组件。</string>
+    <string name="panel_edit_hidden_note">另有 %1$d 个组件不显示：类型是更新版本才有的，或配置不完整。它们原样保留在工程文件里。</string>
+    <string name="panel_edit_hidden_clear">清除</string>
+    <string name="panel_edit_hidden_title">清除 %1$d 个不显示的组件？</string>
+    <string name="panel_edit_hidden_body">换回更新的版本也找不回它们。点「完成」之前都可以放弃这次编辑。</string>
     <string name="panel_edit_hint">编辑时不会写设备 · 点一下选中 · 长按拖动</string>
     <string name="panel_edit_delete_widget">删除组件“%1$s”</string>
     <string name="panel_edit_move_earlier">前移</string>
@@ -269,7 +272,6 @@
     <string name="panel_wiz_group_control_tag">会写设备 · 每次都要确认</string>
     <string name="panel_wiz_sec_point">数据点位</string>
     <string name="panel_wiz_type_more">更多 ▾</string>
-    <string name="panel_wiz_type_less">收起 ▴</string>
     <string name="panel_wiz_address_modicon">= %1$s</string>
     <string name="panel_wiz_conv_title">换算</string>
     <string name="panel_wiz_conv_summary">× %1$s + %2$s</string>
@@ -521,6 +523,10 @@
     <string name="slave_add_start">起始地址</string>
     <string name="slave_add_count">数量</string>
     <string name="slave_add_confirm">添加</string>
+    <string name="slave_remove_range">－ 删除地址段</string>
+    <string name="slave_remove_range_title">删除地址段</string>
+    <string name="slave_remove_range_note">删除 Unit %1$d 这一段里已有的地址和值，外部主站再访问会收到「非法数据地址」；目标落在这段里的模拟规则一起删除。</string>
+    <string name="error_slave_remove_none">这一段里没有已添加的地址</string>
     <string name="slave_apply">应用</string>
     <string name="slave_edit_title">修改 %1$s %2$d</string>
     <string name="slave_edit_value">值</string>
@@ -648,7 +654,7 @@
     <string name="error_slave_unit_range">Unit ID 必须是 1–247 的整数</string>
     <string name="error_slave_unit_exists">Unit %1$d 已经存在</string>
     <string name="slave_remove_title">删除 Unit %1$d？</string>
-    <string name="slave_remove_body">删除后，外部主站再访问 Unit %1$d 不会得到回应；它的地址和值不再保存。</string>
+    <string name="slave_remove_body">删除后，外部主站再访问 Unit %1$d 不会得到回应；它的地址、值和以它为目标的模拟规则一起删除，不再保存。</string>
     <string name="slave_remove_confirm">删除</string>
     <string name="slave_source_header">最近来源</string>
     <string name="slave_src_external">外部写 · %1$s</string>
@@ -683,9 +689,7 @@
     <string name="slave_stat_foreign">外站帧</string>
     <string name="slave_stat_ambiguous">方向不明 %1$s</string>
     <string name="mine_section_settings">设置</string>
-    <string name="mine_settings_title">设置</string>
     <string name="cd_back">返回</string>
-    <string name="cd_open_settings">设置</string>
     <string name="mine_group_appearance">外观</string>
     <string name="mine_group_display">显示与格式</string>
     <string name="mine_group_security">安全</string>

@@ -328,4 +328,35 @@ class PanelWriteControllerTest {
         assertEquals(WriteNoticeKind.DISCONNECTED, run(ModbusResult.Disconnected).kind)
         assertEquals("U1 C5 = ON", run(ModbusResult.Success(ModbusResponse.WriteSingleCoil(1, FunctionCode.WRITE_SINGLE_COIL, 5, true))).summary)
     }
+
+    // ---- 写入功能码：组件勾了“强制 FC15 / FC16”就用写多个 ----
+
+    @Test fun forcedWidgetsUseTheMultipleWriteFunctionCodes() = runTest {
+        val session = Session()
+        val c = controller(session)
+
+        after { c.requestSwitch(coilSwitch().copy(forceMultiple = true), true) }
+        assertEquals(ModbusRequest.WriteMultipleCoils(1, 10, listOf(true)), c.pending!!.write.plan.request)
+        after { c.dismiss() }
+
+        after { c.requestButton(button(area = RegisterArea.HOLDING_REGISTER, type = DataType.U16, value = 7.0).copy(forceMultiple = true)) }
+        assertEquals(ModbusRequest.WriteMultipleRegisters(1, 5, listOf(7)), c.pending!!.write.plan.request)
+        after { c.dismiss() }
+
+        // 寄存器位：仍然先 FC03 读整字，写回用 FC16
+        after { c.requestSwitch(bitSwitch().copy(forceMultiple = true), true) }
+        assertEquals(ModbusRequest.WriteMultipleRegisters(1, 140, listOf(0x0029 or (1 shl 3))), c.pending!!.write.plan.request)
+        after { c.dismiss() }
+        assertTrue("确认前不发写入", session.writes.isEmpty())
+    }
+
+    @Test fun unforcedWidgetsKeepTheSingleWriteFunctionCodes() = runTest {
+        val session = Session()
+        val c = controller(session)
+        after { c.requestButton(button(area = RegisterArea.HOLDING_REGISTER, type = DataType.U16, value = 7.0)) }
+        assertEquals(ModbusRequest.WriteSingleRegister(1, 5, 7), c.pending!!.write.plan.request)
+        after { c.dismiss() }
+        after { c.requestButton(button()) }
+        assertEquals(ModbusRequest.WriteSingleCoil(1, 5, true), c.pending!!.write.plan.request)
+    }
 }

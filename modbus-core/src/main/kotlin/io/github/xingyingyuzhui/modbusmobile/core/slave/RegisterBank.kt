@@ -78,6 +78,15 @@ interface VirtualRegisterBank {
     fun bits(unitId: Int, area: RegisterArea): List<BitCell>
     fun words(unitId: Int, area: RegisterArea): List<WordCell>
 
+    /**
+     * 本地删除：去掉 [unitId] 的 [area] 里 [address] 起 [count] 个地址（不存在的跳过），连同“最近来源”。
+     * 删掉后外部主站再读写这些地址会收到“非法数据地址”。返回实际删掉的个数。
+     */
+    fun remove(unitId: Int, area: RegisterArea, address: Int, count: Int): Int
+
+    /** 去掉 [unitId] 在四个区里的全部地址和来源（删 Unit 时用）。返回删掉的个数。 */
+    fun removeUnit(unitId: Int): Int
+
     /** 这个单元最近一次改值；从来没改过（或实现不记录）时为 null。不经过 [changes]，所以不会因为缓冲溢出丢失。 */
     fun lastChange(unitId: Int, area: RegisterArea, address: Int): RegisterChange? = null
 }
@@ -186,6 +195,25 @@ class InMemoryRegisterBank(
         words.filterKeys { it.unitId == unitId && it.area == area }
             .map { WordCell(it.key.address, it.value) }
             .sortedBy { it.address }
+    }
+
+    override fun remove(unitId: Int, area: RegisterArea, address: Int, count: Int): Int = synchronized(lock) {
+        val cells = if (area.isBit) bits else words
+        var removed = 0
+        for (offset in 0 until count.coerceAtLeast(0)) {
+            val key = Key(unitId, area, address + offset)
+            last.remove(key)
+            if (cells.remove(key) != null) removed++
+        }
+        removed
+    }
+
+    override fun removeUnit(unitId: Int): Int = synchronized(lock) {
+        val before = bits.size + words.size
+        bits.keys.removeAll { it.unitId == unitId }
+        words.keys.removeAll { it.unitId == unitId }
+        last.keys.removeAll { it.unitId == unitId }
+        before - bits.size - words.size
     }
 
     /** 在 [lock] 内调用：记下最近一次改值，并发布变化事件。 */

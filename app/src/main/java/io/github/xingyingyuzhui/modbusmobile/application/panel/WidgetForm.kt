@@ -61,6 +61,8 @@ data class WidgetForm(
     /** 寄存器表：行数（1..16）和“允许在面板上修改”（默认关）。 */
     val tableRows: String = "4",
     val tableWritable: Boolean = false,
+    /** 写入功能码：强制 FC15 / FC16（见 [Widget.forceMultiple]）。 */
+    val forceMultiple: Boolean = false,
 ) {
     /** 按钮可以选 Unit 0（广播）；其余组件要读状态，必须 1..247。 */
     val allowsBroadcast: Boolean get() = kind == WidgetKinds.BUTTON
@@ -75,6 +77,12 @@ data class WidgetForm(
 
     /** 输入类区域只读；寄存器表只有线圈 / 保持寄存器才能“允许修改”。 */
     val canAllowWrite: Boolean get() = isTable && (area == RegisterArea.COIL || area == RegisterArea.HOLDING_REGISTER)
+
+    /** 会写设备的组件（开关 / 按钮 / 勾了“允许修改”的寄存器表）可以选写入功能码。 */
+    val writesDevice: Boolean get() = isWriter || (isTable && tableWritable && canAllowWrite)
+
+    /** 写一次只有一个线圈 / 一个寄存器（多字类型本来就是 FC16，不用选）。 */
+    val singleValueWrite: Boolean get() = area == RegisterArea.COIL || (type.registers ?: 1) == 1
 
     /** 这一类组件在当前区域下能选的数据类型。 */
     fun allowedTypes(): List<DataType> = allowedTypes(kind, area)
@@ -235,6 +243,7 @@ data class WidgetForm(
             writeValue = if (kind == WidgetKinds.BUTTON) preset else null,
             tableRows = if (isTable) rows else 0,
             tableWritable = isTable && tableWritable && point.isWritable,
+            forceMultiple = forceMultiple && writesDevice && singleValueWrite,
         )
         WidgetWrites.problem(widget)?.let { return FormResult(null, mapOf(FormField.ADDRESS to FormError.OUT_OF_RANGE)) }
         return FormResult(widget, emptyMap())
@@ -309,6 +318,7 @@ data class WidgetForm(
                 buttonLabel = widget.buttonLabel, writeValue = widget.writeValue?.let { ValueCodec.format(it, null) }.orEmpty(),
                 tableRows = if (widget.kind == WidgetKinds.REGISTER_TABLE) widget.tableRows.toString() else "4",
                 tableWritable = widget.tableWritable,
+                forceMultiple = widget.forceMultiple,
             )
         }
     }

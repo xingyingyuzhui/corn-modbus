@@ -3,7 +3,10 @@ package io.github.xingyingyuzhui.modbusmobile.ui.components
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.semantics.Role
@@ -50,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -251,20 +255,41 @@ fun <T> ChipRow(
 }
 
 /**
- * 只把高度补到 [min]（默认 48dp），宽度不动。chip 成排放时不能像 minimumInteractiveComponentSize 那样把窄 chip（“…”）也撑到 48 宽，
- * 否则 4 个预设挤不进一行。窄 chip 的横向热区靠 Compose 默认的触控目标扩展（真机未验证）。
+ * 触控热区补到 [MinTouch] 高，但外扩部分不占布局：[touchPad] 量出视觉高、在上下补边距，
+ * [touchOverhang] 再把补的部分从报给父布局的高度里减掉、往上挪回去，热区画在自己的上下边距之外。
+ * 原来的 minimumTouchHeight 把 33dp 的 chip 撑成 48dp 布局高，上下各多出约 7.5dp 看不见的空白，
+ * 标题 → chip、chip → 卡底都显得比别处松（E-20261028-ux1 A2）。两段之间夹 clickable，热区 = 补齐后的 48dp。
+ * 横向不扩：窄 chip 的横向热区靠 [SelectChip] 的 minWidth 和 Compose 默认的触控目标扩展。
  */
-private fun Modifier.minimumTouchHeight(min: Dp = MinTouch): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    val height = maxOf(placeable.height, min.roundToPx())
+private class TouchPad { var extra = 0 }
+
+private fun Modifier.touchOverhang(pad: TouchPad): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minHeight = 0))
+    val extra = pad.extra
+    layout(placeable.width, placeable.height - 2 * extra) { placeable.placeRelative(0, -extra) }
+}
+
+private fun Modifier.touchPad(pad: TouchPad, min: Dp = MinTouch): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minHeight = 0))
+    pad.extra = maxOf(0, (min.roundToPx() - placeable.height) / 2)
+    layout(placeable.width, placeable.height + 2 * pad.extra) { placeable.placeRelative(0, pad.extra) }
+}
+
+/**
+ * 只占 [visible] 的布局高、内容（含 ≥48dp 的触控热区）上下居中溢出：给行内文字链接用，
+ * 让「最近写入 · 清空」这类标题行和普通小标题一样矮，热区照旧 48dp。
+ */
+fun Modifier.overhangHeight(visible: Dp): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity))
+    val height = visible.roundToPx()
     layout(placeable.width, height) { placeable.placeRelative(0, (height - placeable.height) / 2) }
 }
 
 /**
  * [xs] = 稿面 xs 档：高 25、字 12、内边距 3/8。
  * [design] = 稿面普通 chip：高 33、字 12.5、内边距 9（G#1，只在显式开启的页面生效，全局默认仍是 48dp）。
- * [description] 给只有符号的 chip（例如“…”）补读屏文字。
- * 视觉保持稿面尺寸，触控高度用 [minimumTouchHeight] 补到 48dp（真机未验证）。
+ * [description] 给只有符号的 chip 补读屏文字。
+ * 视觉保持稿面尺寸，触控高度用 [touchOverhang] 外扩到 48dp，外扩部分不占布局。
  */
 @Composable
 fun SelectChip(
@@ -281,16 +306,20 @@ fun SelectChip(
     val shape = RoundedCornerShape(ChipRadius)
     val minHeight = if (xs) 25.dp else if (design) 33.dp else MinTouch
     val horizontal = if (xs) 8.dp else if (design) 9.dp else 12.dp
+    val pad = remember { TouchPad() }
+    val interaction = remember { MutableInteractionSource() }
     Box(
         Modifier
-            .minimumTouchHeight()
+            .touchOverhang(pad)
+            .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .touchPad(pad)
             .widthIn(min = minWidth)
             .heightIn(min = minHeight)
             .clip(shape)
             .background(if (selected) colors.wash(colors.accent) else colors.surface1)
             .border(1.dp, if (selected) colors.accent else colors.line, shape)
-            .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
-            .clickable(onClick = onClick)
+            .indication(interaction, LocalIndication.current)
             .padding(horizontal = horizontal, vertical = if (xs) 3.dp else if (design) 6.dp else 0.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -309,20 +338,49 @@ fun FieldTile(
     sub: String? = null,
     modifier: Modifier = Modifier,
     mono: Boolean = true,
+    minHeight: Dp = ModbusSize.fieldTile,
+    open: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     val colors = LocalModbusColors.current
+    val shape = RoundedCornerShape(FieldRadius)
     // §6.2 v2：label caption 11/16、值 monoValueM 17/24；内边距 12×8，最小高 56（8 + 16 + 24 + 8）。原 10×7 / 50。
+    // 传了 [onClick] 就是下拉格：整格可点、值后画 ⌄，菜单展开（[open]）时 1.5dp accent.border 描边，同输入格聚焦态。
     Column(
         modifier
-            .heightIn(min = ModbusSize.fieldTile)
-            .background(colors.surface2, RoundedCornerShape(FieldRadius))
+            .heightIn(min = minHeight)
+            .clip(shape)
+            .background(colors.surface2, shape)
+            .then(if (open) Modifier.border(StrokeControl, colors.accentBorder, shape) else Modifier)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClickLabel = label, role = Role.DropdownList, onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
             .padding(fieldPadding()),
     ) {
-        Text(label, color = colors.muted, style = ModbusType.caption)
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(value, color = colors.text, style = if (mono) ModbusType.monoValueM else ModbusType.titleS)
+        Text(label, color = colors.muted, style = ModbusType.caption, maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                value,
+                color = colors.text,
+                style = if (mono) ModbusType.monoValueM else ModbusType.titleS,
+                maxLines = 1,
+                softWrap = false,
+                modifier = if (onClick != null) Modifier.weight(1f) else Modifier,
+            )
             if (sub != null) {
                 Text(sub, color = colors.dim, style = ModbusType.monoCaption, modifier = Modifier.padding(start = LocalSpacing.current.xs))
+            }
+            if (onClick != null) {
+                ChevronIcon(
+                    colors.dim,
+                    expanded = true,
+                    size = 12.dp,
+                    modifier = Modifier.padding(start = LocalSpacing.current.xs).then(if (open) Modifier.rotate(180f) else Modifier),
+                )
             }
         }
     }

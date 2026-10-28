@@ -102,7 +102,7 @@ class PanelWriteController(
             val snap = snapshotOf(point.id)
             val known = snap?.takeIf { it.quality == Quality.OK && it.raw != null }
             val current = known?.engineering?.let { if (it != 0.0) 1 else 0 }
-            val plan = planWrite(RegisterArea.COIL, point.unitId.toString(), point.address.toString(), emptyList(), listOf(target), WriteFormat.DEC, false)
+            val plan = planWrite(RegisterArea.COIL, point.unitId.toString(), point.address.toString(), emptyList(), listOf(target), WriteFormat.DEC, widget.forceMultiple)
             val ok = (plan as? PlanResult.Ok)?.plan ?: return reject(widget, WriteNoticeKind.BAD_STATE)
             val age = known?.updatedWallMs?.let { (wallClock() - it).coerceAtLeast(0) }
             pending = PanelPending(widget, PendingWrite(ok, listOf(current), age, currentFromRead = true))
@@ -133,13 +133,13 @@ class PanelWriteController(
         if (!accept(widget)) return
         val result = when (point.area) {
             RegisterArea.COIL -> planWrite(
-                RegisterArea.COIL, point.unitId.toString(), point.address.toString(), emptyList(), listOf(value != 0.0), WriteFormat.DEC, false,
+                RegisterArea.COIL, point.unitId.toString(), point.address.toString(), emptyList(), listOf(value != 0.0), WriteFormat.DEC, widget.forceMultiple,
             )
             else -> {
                 val words = WidgetWrites.buttonWords(point, value) ?: return reject(widget, WriteNoticeKind.BAD_STATE)
                 planWrite(
                     RegisterArea.HOLDING_REGISTER, point.unitId.toString(), point.address.toString(),
-                    words.map { it.toString() }, emptyList(), WriteFormat.DEC, forceMultiple = false,
+                    words.map { it.toString() }, emptyList(), WriteFormat.DEC, forceMultiple = widget.forceMultiple,
                 )
             }
         }
@@ -168,7 +168,7 @@ class PanelWriteController(
             val known = snap?.takeIf { it.quality == Quality.OK && it.raw != null }
             val current = known?.engineering?.let { if (it != 0.0) 1 else 0 }
             val target = current != 1
-            val plan = planWrite(RegisterArea.COIL, row.unitId.toString(), row.address.toString(), emptyList(), listOf(target), WriteFormat.DEC, false)
+            val plan = planWrite(RegisterArea.COIL, row.unitId.toString(), row.address.toString(), emptyList(), listOf(target), WriteFormat.DEC, widget.forceMultiple)
             val ok = (plan as? PlanResult.Ok)?.plan ?: return reject(widget, WriteNoticeKind.BAD_STATE)
             val age = known?.updatedWallMs?.let { (wallClock() - it).coerceAtLeast(0) }
             pending = PanelPending(widget, PendingWrite(ok, listOf(current), age, currentFromRead = true), row = RowWrite(index, if (target) "ON" else "OFF"))
@@ -193,7 +193,7 @@ class PanelWriteController(
         }
         val plan = planWrite(
             RegisterArea.HOLDING_REGISTER, row.unitId.toString(), row.address.toString(), words.map { it.toString() }, emptyList(),
-            WriteFormat.DEC, forceMultiple = false,
+            WriteFormat.DEC, forceMultiple = e.widget.forceMultiple,
         )
         val ok = (plan as? PlanResult.Ok)?.plan
         if (ok == null) {
@@ -303,7 +303,7 @@ class PanelWriteController(
         val newWord = ValueCodec.withBit(word, point.bit, target)
         val plan = planWrite(
             RegisterArea.HOLDING_REGISTER, point.unitId.toString(), point.address.toString(), listOf(newWord.toString()), emptyList(),
-            WriteFormat.DEC, false,
+            WriteFormat.DEC, widget.forceMultiple,
         )
         val ok = (plan as? PlanResult.Ok)?.plan ?: return null
         return PanelPending(widget, PendingWrite(ok, listOf(word), currentAgeMs = 0, currentFromRead = true), BitEdit(point.bit, word, target))

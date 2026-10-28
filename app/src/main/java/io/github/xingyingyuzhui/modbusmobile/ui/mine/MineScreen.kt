@@ -23,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,8 +50,6 @@ import io.github.xingyingyuzhui.modbusmobile.ui.components.AppearanceIcon
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ColorSwatchRow
 import io.github.xingyingyuzhui.modbusmobile.ui.components.CommIcon
 import io.github.xingyingyuzhui.modbusmobile.ui.components.DisplayFormatIcon
-import io.github.xingyingyuzhui.modbusmobile.ui.components.GearIcon
-import io.github.xingyingyuzhui.modbusmobile.ui.components.HeaderIconButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.InfoIcon
 import io.github.xingyingyuzhui.modbusmobile.ui.components.LockIcon
 import io.github.xingyingyuzhui.modbusmobile.ui.components.NumberInput
@@ -59,6 +58,8 @@ import io.github.xingyingyuzhui.modbusmobile.ui.components.PrimaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SecondaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.RowDivider
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SectionLabel
+import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusMenu
+import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusMenuItem
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SegmentedTextControl
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingRow
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingTrailing
@@ -73,7 +74,7 @@ import io.github.xingyingyuzhui.modbusmobile.ui.theme.LocalSpacing
 import kotlinx.coroutines.launch
 
 /** 「我的」里的页面。HOME 是入口；SETTINGS 是把所有分组按顺序排在一页的完整设置页（稿面 b3-2）。 */
-enum class MinePage { HOME, SETTINGS, APPEARANCE, DISPLAY, SECURITY, COMM, ABOUT, HISTORY, STORAGE }
+enum class MinePage { HOME, APPEARANCE, DISPLAY, SECURITY, COMM, ABOUT, HISTORY, STORAGE }
 
 private val GroupPages = listOf(MinePage.APPEARANCE, MinePage.DISPLAY, MinePage.SECURITY, MinePage.COMM, MinePage.ABOUT)
 
@@ -157,14 +158,10 @@ private fun MinePortrait(
     onDelete: (HistorySession) -> Unit,
 ) {
     val spacing = LocalSpacing.current
-    val colors = LocalModbusColors.current
     Column(Modifier.screenFrame()) {
         if (page == MinePage.HOME) {
-            PageHeader(stringResource(R.string.title_mine)) {
-                HeaderIconButton(stringResource(R.string.cd_open_settings), { go(MinePage.SETTINGS) }, Modifier.testTag("mine-settings")) {
-                    GearIcon(colors.muted, size = 18.dp)
-                }
-            }
+            // 页头不再放 ⚙：下面的分组列表就是设置入口，两个入口进的是同一批设置（E-20261028-ux1 C2）。
+            PageHeader(stringResource(R.string.title_mine))
             Column(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = dockClearance()),
                 verticalArrangement = Arrangement.spacedBy(spacing.s),
@@ -180,18 +177,7 @@ private fun MinePortrait(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = dockClearance()),
                 verticalArrangement = Arrangement.spacedBy(spacing.group),
             ) {
-                if (page == MinePage.SETTINGS) {
-                    // 完整设置页：外观 / 显示与格式 / 安全 / 通信默认值 / 存储，各带一个小标题
-                    listOf(MinePage.APPEARANCE, MinePage.DISPLAY, MinePage.SECURITY, MinePage.COMM).forEach { group ->
-                        SectionLabel(pageTitle(group))
-                        GroupContent(group, model, settings, overview, recording, onDelete)
-                    }
-                    SectionLabel(stringResource(R.string.mine_storage_title))
-                    StorageSettings(model, settings)
-                    AuthorCredit()
-                } else {
-                    GroupContent(page, model, settings, overview, recording, onDelete)
-                }
+                GroupContent(page, model, settings, overview, recording, onDelete)
             }
         }
     }
@@ -274,7 +260,6 @@ private fun GroupIcon(group: MinePage, tint: androidx.compose.ui.graphics.Color)
 private fun pageTitle(page: MinePage): String = stringResource(
     when (page) {
         MinePage.HOME -> R.string.title_mine
-        MinePage.SETTINGS -> R.string.mine_settings_title
         MinePage.APPEARANCE -> R.string.mine_group_appearance
         MinePage.DISPLAY -> R.string.mine_group_display
         MinePage.SECURITY -> R.string.mine_group_security
@@ -438,7 +423,6 @@ private enum class CommField(val label: Int) {
     TIMEOUT(R.string.comm_timeout),
     GAP(R.string.comm_gap),
     BROADCAST(R.string.comm_broadcast),
-    ECHO(R.string.comm_echo),
 }
 
 @Composable
@@ -476,59 +460,68 @@ private fun CommGroup(model: MineViewModel, settings: UiSettings) {
                 onClick = { editing = CommField.BROADCAST.name },
             )
             RowDivider()
-            SettingRow(
-                stringResource(R.string.comm_echo),
-                Modifier.testTag("comm-echo"),
-                value = echoName(settings.defaultEcho),
-                onClick = { editing = CommField.ECHO.name },
-            )
+            // 回显是三选一：点行直接在行尾弹菜单选，不进编辑器。
+            var echoOpen by remember { mutableStateOf(false) }
+            Box {
+                SettingRow(
+                    stringResource(R.string.comm_echo),
+                    Modifier.testTag("comm-echo"),
+                    value = echoName(settings.defaultEcho),
+                    onClick = { echoOpen = true },
+                )
+                Box(Modifier.align(Alignment.BottomEnd)) {
+                    ModbusMenu(expanded = echoOpen, onDismiss = { echoOpen = false }, modifier = Modifier.testTag("comm-echo-menu")) {
+                        EchoMode.entries.forEach { mode ->
+                            ModbusMenuItem(
+                                echoName(mode),
+                                onClick = { echoOpen = false; model.setDefaultEcho(mode) },
+                                selected = mode == settings.defaultEcho,
+                            )
+                        }
+                    }
+                }
+            }
         }
         Text(stringResource(R.string.comm_hint), color = colors.dim, fontSize = 12.sp, lineHeight = 17.sp)
     }
 }
 
-/** 一项通信默认值的编辑：数值（不合法就不能保存，错误文案同连接页）或回显三选一。 */
+/** 一项数值型通信默认值的编辑（不合法就不能保存，错误文案同连接页）；回显在列表行上直接弹菜单。 */
 @Composable
 private fun CommEditor(field: CommField, settings: UiSettings, model: MineViewModel, onDone: () -> Unit) {
     val spacing = LocalSpacing.current
     val label = stringResource(field.label)
     Column(Modifier.testTag("comm-editor"), verticalArrangement = Arrangement.spacedBy(spacing.s)) {
         SectionLabel(stringResource(R.string.comm_edit_title, label))
-        if (field == CommField.ECHO) {
-            var mode by remember { mutableStateOf(settings.defaultEcho) }
-            SegmentedTextControl(EchoMode.entries, mode, { mode = it }) { echoName(it) }
-            EditorButtons(enabled = true, onSave = { model.setDefaultEcho(mode); onDone() }, onCancel = onDone)
-        } else {
-            val (initial, range, errorRes) = when (field) {
-                CommField.TIMEOUT -> Triple(settings.defaultResponseTimeoutMs, MineViewModel.TimeoutRange, R.string.error_timeout_range)
-                CommField.GAP -> Triple(settings.defaultInterRequestMs, MineViewModel.IntervalRange, R.string.error_timeout_range)
-                else -> Triple(settings.defaultBroadcastWaitMs, MineViewModel.BroadcastRange, R.string.error_broadcast_range)
-            }
-            var text by rememberSaveable(field.name) { mutableStateOf(initial.toString()) }
-            val parsed = MineViewModel.parseMs(text, range)
-            NumberInput(
-                label = label,
-                value = text,
-                error = if (parsed == null) stringResource(errorRes) else null,
-                sub = stringResource(R.string.comm_unit_ms),
-                modifier = Modifier.fillMaxWidth(),
-                onValue = { text = it.filter(Char::isDigit).take(7) },
-            )
-            EditorButtons(
-                enabled = parsed != null,
-                onSave = {
-                    parsed?.let {
-                        when (field) {
-                            CommField.TIMEOUT -> model.setDefaultTimeout(it)
-                            CommField.GAP -> model.setDefaultInterval(it)
-                            else -> model.setDefaultBroadcastWait(it)
-                        }
-                        onDone()
-                    }
-                },
-                onCancel = onDone,
-            )
+        val (initial, range, errorRes) = when (field) {
+            CommField.TIMEOUT -> Triple(settings.defaultResponseTimeoutMs, MineViewModel.TimeoutRange, R.string.error_timeout_range)
+            CommField.GAP -> Triple(settings.defaultInterRequestMs, MineViewModel.IntervalRange, R.string.error_timeout_range)
+            else -> Triple(settings.defaultBroadcastWaitMs, MineViewModel.BroadcastRange, R.string.error_broadcast_range)
         }
+        var text by rememberSaveable(field.name) { mutableStateOf(initial.toString()) }
+        val parsed = MineViewModel.parseMs(text, range)
+        NumberInput(
+            label = label,
+            value = text,
+            error = if (parsed == null) stringResource(errorRes) else null,
+            sub = stringResource(R.string.comm_unit_ms),
+            modifier = Modifier.fillMaxWidth(),
+            onValue = { text = it.filter(Char::isDigit).take(7) },
+        )
+        EditorButtons(
+            enabled = parsed != null,
+            onSave = {
+                parsed?.let {
+                    when (field) {
+                        CommField.TIMEOUT -> model.setDefaultTimeout(it)
+                        CommField.GAP -> model.setDefaultInterval(it)
+                        else -> model.setDefaultBroadcastWait(it)
+                    }
+                    onDone()
+                }
+            },
+            onCancel = onDone,
+        )
     }
 }
 

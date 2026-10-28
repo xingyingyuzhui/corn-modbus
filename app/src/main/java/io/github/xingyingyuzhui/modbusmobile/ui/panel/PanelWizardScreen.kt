@@ -76,6 +76,9 @@ import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetForm
 import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetKinds
 import io.github.xingyingyuzhui.modbusmobile.application.panel.RawValue
 import io.github.xingyingyuzhui.modbusmobile.core.model.RegisterArea
+import io.github.xingyingyuzhui.modbusmobile.ui.components.FieldTileMenu
+import io.github.xingyingyuzhui.modbusmobile.ui.traffic.fcLongRes
+import io.github.xingyingyuzhui.modbusmobile.ui.workbench.fcLabel
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusCard
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusSwitchVisual
 import io.github.xingyingyuzhui.modbusmobile.ui.components.NumberInput
@@ -83,6 +86,8 @@ import io.github.xingyingyuzhui.modbusmobile.ui.components.PrimaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SecondaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SegmentedTextControl
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SelectChip
+import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusMenuItem
+import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusMenu
 import io.github.xingyingyuzhui.modbusmobile.application.panel.Widget
 import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetWrites
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingTrailing
@@ -314,6 +319,7 @@ private fun DataStep(
             SourceSection(wizard, result, onForm)
             if (form.kind == WidgetKinds.BUTTON) WriteValueField(wizard, result, onForm)
             if (form.isTable) TableFields(wizard, result, onForm)
+            if (form.writesDevice && form.singleValueWrite) WriteFunctionField(form, onForm)
         }
     }
     if (form.usesConversion && form.type != DataType.ASCII) {
@@ -383,6 +389,33 @@ private fun ButtonLabelField(form: WidgetForm, onForm: (WidgetForm) -> Unit) {
         stringResource(R.string.panel_wiz_button_label), form.buttonLabel, Modifier.fillMaxWidth().testTag("wiz-button-label"),
         sub = null, keyboardType = KeyboardType.Text,
     ) { onForm(form.copy(buttonLabel = it.take(WidgetForm.MAX_BUTTON_LABEL))) }
+}
+
+/**
+ * 写入功能码：单个值默认 FC05 / FC06，可改成 FC15 / FC16（有的设备只认“写多个”）。
+ * 多字类型（32 位 / F32）本来就是 FC16，不显示这一格。
+ */
+@Composable
+private fun WriteFunctionField(form: WidgetForm, onForm: (WidgetForm) -> Unit) {
+    val coil = form.area == RegisterArea.COIL
+    FieldTileMenu(
+        stringResource(R.string.panel_wiz_write_fc),
+        form.forceMultiple,
+        listOf(false, true),
+        { force ->
+            val code = when {
+                coil && force -> 0x0F
+                coil -> 0x05
+                force -> 0x10
+                else -> 0x06
+            }
+            "${fcLabel(code)} " + stringResource(fcLongRes(code))
+        },
+        { onForm(form.copy(forceMultiple = it)) },
+        Modifier.fillMaxWidth().testTag("wiz-write-fc"),
+        mono = false,
+        optionTag = { if (it) "wiz-write-fc-multi" else "wiz-write-fc-single" },
+    )
 }
 
 /** 寄存器表的配置：行数（地址范围实时显示）+ “允许在面板上修改”（默认关；输入类区域只读，不能开）。 */
@@ -590,21 +623,36 @@ internal fun SourceSection(wizard: WizardState, result: FormResult, onForm: (Wid
                 color = colors.muted, fontSize = 12.sp, modifier = Modifier.testTag("wiz-occupies"),
             )
         }
-        // v3：只列当前区域能用的类型（不画灰的）；常用的放外面，其余收进“更多”
+        // v3：只列当前区域能用的类型（不画灰的）；常用的放外面，其余收进“更多 ▾”菜单（不再展开成一排 chip）。
+        // 选了菜单里的类型后，这颗 chip 显示成选中的类型名，再点还是弹同一个菜单。
         val allowed = form.allowedTypes()
         val common = CommonTypes.filter { it in allowed }
         val rest = allowed.filter { it !in CommonTypes }
-        var more by rememberSaveable { mutableStateOf(false) }
-        val showMore = more || form.type in rest
+        var more by remember { mutableStateOf(false) }
         FlowRowChips {
-            (common + if (showMore) rest else emptyList()).forEach { type ->
+            common.forEach { type ->
                 Box(Modifier.testTag("wiz-type-${type.name}")) {
                     SelectChip(typeLabel(type), type == form.type, xs = true) { onForm(form.withType(type)) }
                 }
             }
-            if (rest.isNotEmpty() && form.type !in rest) {
+            if (rest.isNotEmpty()) {
+                val picked = form.type in rest
                 Box(Modifier.testTag("wiz-type-more")) {
-                    SelectChip(stringResource(if (showMore) R.string.panel_wiz_type_less else R.string.panel_wiz_type_more), false, xs = true) { more = !showMore }
+                    SelectChip(
+                        if (picked) typeLabel(form.type) + " ▾" else stringResource(R.string.panel_wiz_type_more),
+                        picked,
+                        xs = true,
+                    ) { more = true }
+                    ModbusMenu(expanded = more, onDismiss = { more = false }) {
+                        rest.forEach { type ->
+                            ModbusMenuItem(
+                                typeLabel(type),
+                                onClick = { more = false; onForm(form.withType(type)) },
+                                selected = type == form.type,
+                                modifier = Modifier.testTag("wiz-type-${type.name}"),
+                            )
+                        }
+                    }
                 }
             }
         }

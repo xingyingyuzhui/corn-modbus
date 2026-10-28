@@ -136,6 +136,20 @@ class LogPageTest {
         assertEquals(4, recorder.frames)
     }
 
+    /** 页头是文字「锁定滚动」，不是 ⏸：锁定只是列表不跟随，新帧照常记录，不能和「暂停记录」混。 */
+    @Test
+    fun headerLockIsWordedAsScrollLockAndDoesNotStopRecording() {
+        show()
+        compose.onNodeWithTag("log-start").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("log-lock").assertTextContains("锁定滚动")
+        compose.onNodeWithTag("log-lock").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("log-lock").assertTextContains("恢复自动滚动")
+        compose.onNodeWithTag("log-pause").assertIsDisplayed()
+        compose.onNodeWithText("暂停记录").assertIsDisplayed()
+    }
+
     @Test
     fun elapsedTimeStyleShowsOffsetsInsteadOfWallClock() {
         show(time = TimeStyle.ELAPSED)

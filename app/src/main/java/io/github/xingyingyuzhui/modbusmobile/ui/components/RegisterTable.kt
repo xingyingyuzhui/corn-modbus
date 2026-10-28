@@ -193,11 +193,17 @@ private fun RegisterRowView(
         if (badgeColumn) {
             Box(Modifier.width(hexWidth), contentAlignment = Alignment.CenterEnd) {
                 val badge = row.badge
-                when {
-                    badge == null -> Text("—", color = colors.dim, fontSize = 11.sp)
-                    badge.kind == null -> ToneBadge(badge.text, colors.muted)
-                    else -> SemanticBadge(badge.kind, badge.text)
-                }
+                // 来源只是说明，不可点：用带语义色的小字，不画底色徽标（徽标像按钮，E-20261028-ux1 C1）。
+                Text(
+                    badge?.text ?: "—",
+                    color = when {
+                        badge == null -> colors.dim
+                        badge.kind == null -> colors.muted
+                        else -> colors.tone(badge.kind)
+                    },
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                )
             }
         } else {
             Text(

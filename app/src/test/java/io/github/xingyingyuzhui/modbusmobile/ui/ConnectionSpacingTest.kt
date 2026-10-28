@@ -69,8 +69,8 @@ class ConnectionSpacingTest {
         assertClose("设备卡 标题行顶", labels[0].top - deviceCard.top, 12f)
         assertClose("角色卡 标题行顶", labels[1].top - roleCard.top, 12f)
         assertClose("串口卡 标题行顶", labels[2].top - serialCard.top, 12f)
-        // v2 label 使用16sp行高（系统字体实际布局18dp），串口 Mono 副标题20dp。
-        labels.zip(listOf(18f, 18f, 20f)).forEach { (label, height) ->
+        // v2 label 使用16sp行高（系统字体实际布局18dp）；串口卡不再有 Mono 角标，三张卡标题行同高。
+        labels.zip(listOf(18f, 18f, 18f)).forEach { (label, height) ->
             assertClose("标题行高", label.height.value, height, 0.6f)
         }
 
@@ -81,9 +81,10 @@ class ConnectionSpacingTest {
         val seg = b(compose.onAllNodesWithTag(SegContainerTag)[0].getBoundsInRoot())
         println("MEASURE 角色卡 标题行底→分段顶 = ${(seg.top - labels[1].bottom).value}dp")
         assertClose("角色卡：标题行底→分段顶", seg.top - labels[1].bottom, 8f)
-        val chips = tag("serial-chips")
-        println("MEASURE 串口卡 标题行底→预设 chip 顶 = ${(chips.top - labels[2].bottom).value}dp")
-        assertClose("串口卡：标题行底→预设 chip 顶", chips.top - labels[2].bottom, 8f, 2f)
+        val tiles = tag("serial-baud")
+        println("MEASURE 串口卡 标题行底→串口格顶 = ${(tiles.top - labels[2].bottom).value}dp")
+        assertClose("串口卡：标题行底→串口格顶", tiles.top - labels[2].bottom, 8f)
+        assertClose("串口卡：串口格底→卡底", serialCard.bottom - tiles.bottom, 12f)
 
         // 设备行58（字体取整59）、角色分段62（padding4）、高级卡44（12+20+12）
         compose.onAllNodesWithTag("device-row").fetchSemanticsNodes().indices.forEach {

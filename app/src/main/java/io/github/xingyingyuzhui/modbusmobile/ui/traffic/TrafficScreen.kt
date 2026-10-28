@@ -58,11 +58,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.xingyingyuzhui.modbusmobile.R
 import io.github.xingyingyuzhui.modbusmobile.core.model.TrafficKind
 import io.github.xingyingyuzhui.modbusmobile.ui.LocalSession
-import io.github.xingyingyuzhui.modbusmobile.ui.components.HeaderIconButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.HexFrameText
 import io.github.xingyingyuzhui.modbusmobile.ui.components.PageHeader
-import io.github.xingyingyuzhui.modbusmobile.ui.components.PauseIcon
-import io.github.xingyingyuzhui.modbusmobile.ui.components.PlayIcon
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SelectChip
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SemanticBadge
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SemanticKind
@@ -328,15 +325,19 @@ private fun PageBar(
     }
 }
 
+/**
+ * 页头「锁定滚动 / 恢复自动滚动」：用文字而不是 ⏸ / ▶ 图标，免得和下面的「暂停记录」按钮混淆
+ * （锁定滚动只是列表不跟随最新，新帧照常记录）。锁定时用强调色。
+ */
 @Composable
 private fun LockButton(locked: Boolean, onClick: () -> Unit) {
     val colors = LocalModbusColors.current
-    HeaderIconButton(
+    TextLink(
         stringResource(if (locked) R.string.cd_log_resume else R.string.cd_log_pause),
         onClick,
-    ) {
-        if (locked) PlayIcon(colors.accentText) else PauseIcon(colors.muted)
-    }
+        Modifier.testTag("log-lock"),
+        color = if (locked) colors.accentText else colors.muted,
+    )
 }
 
 @Composable

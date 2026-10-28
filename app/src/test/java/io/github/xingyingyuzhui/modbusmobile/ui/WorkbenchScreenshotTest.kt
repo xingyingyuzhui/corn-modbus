@@ -50,6 +50,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasParent
+import androidx.compose.ui.test.hasTestTag
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -119,6 +123,35 @@ class WorkbenchScreenshotTest {
         compose.onNodeWithText("写入").performClick()
         compose.onNodeWithText("＋ 添加").assertTouchHeightIsEqualTo(48.dp).assertHeightIsAtLeast(48.dp)
         compose.onNodeWithText("清空").assertTouchHeightIsEqualTo(48.dp).assertHeightIsAtLeast(48.dp)
+    }
+
+    /** 「最近写入」标题行只占一行字高：标题 → 卡片 8dp（卡内文字再有 16 内边距），不再被「清空」的 48dp 热区撑开。 */
+    @Test
+    fun recentWritesTitleSitsCloseToItsCard() {
+        show(ThemeMode.LIGHT, ShotSession())
+        compose.onNodeWithText("写入").performClick()
+        compose.waitForIdle()
+        val title = compose.onNodeWithText("最近写入").getBoundsInRoot()
+        val empty = compose.onNodeWithText("还没有写入记录。").getBoundsInRoot()
+        assertEquals("标题底 → 空态文字顶 = 8 + 卡内 16", 24f, (empty.top - title.bottom).value, 2f)
+        compose.onNodeWithText("清空").assertTouchHeightIsEqualTo(48.dp)
+    }
+
+    /** 「格式」是下拉格：点一下只弹菜单，不悄悄切换；选十六进制后已填的值跟着换算。 */
+    @Test
+    fun writeFormatIsPickedFromAMenu() {
+        show(ThemeMode.DARK, ShotSession())
+        compose.onNodeWithText("写入").performClick()
+        replaceField(2, "100")
+        compose.onNodeWithTag("write-format").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("field-menu").assertExists()
+        formatTile().assertTextContains("十进制", substring = true)
+        compose.onNodeWithText("十六进制").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("field-menu").assertDoesNotExist()
+        formatTile().assertTextContains("十六进制", substring = true)
+        compose.onAllNodes(hasSetTextAction() and hasText("64")).assertCountEquals(1)
     }
 
     @Test
@@ -423,6 +456,8 @@ class WorkbenchScreenshotTest {
         replaceField(4, "500")
         compose.waitForIdle()
     }
+
+    private fun formatTile() = compose.onNode(hasClickAction() and hasParent(hasTestTag("write-format")))
 
     private fun replaceField(index: Int, text: String) {
         compose.onAllNodes(hasSetTextAction())[index].performTextReplacement(text)
