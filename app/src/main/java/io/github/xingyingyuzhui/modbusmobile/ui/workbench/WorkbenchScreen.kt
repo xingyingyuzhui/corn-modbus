@@ -54,6 +54,7 @@ import io.github.xingyingyuzhui.modbusmobile.ui.LocalMasterPoller
 import io.github.xingyingyuzhui.modbusmobile.ui.LocalSession
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ChipRow
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ChoiceTile
+import io.github.xingyingyuzhui.modbusmobile.ui.components.FieldTileMenu
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ConfirmSheet
 import io.github.xingyingyuzhui.modbusmobile.ui.components.GearIcon
 import io.github.xingyingyuzhui.modbusmobile.ui.components.HeaderIconButton
@@ -75,6 +76,7 @@ import io.github.xingyingyuzhui.modbusmobile.ui.components.SemanticBadge
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SemanticKind
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SessionStrip
 import io.github.xingyingyuzhui.modbusmobile.ui.components.TextLink
+import io.github.xingyingyuzhui.modbusmobile.ui.components.overhangHeight
 import io.github.xingyingyuzhui.modbusmobile.ui.resolve
 import io.github.xingyingyuzhui.modbusmobile.ui.UiText
 import io.github.xingyingyuzhui.modbusmobile.ui.LocalOpenConnection
@@ -328,11 +330,14 @@ private fun RequestCard(model: WorkbenchViewModel, settings: UiSettings, landsca
                     readOnly = model.busy,
                 ) { model.quantity = it }
             } else if (model.writeArea == RegisterArea.HOLDING_REGISTER) {
-                ChoiceTile(
+                FieldTileMenu(
                     stringResource(R.string.field_format),
-                    stringResource(if (model.writeFormat == WriteFormat.DEC) R.string.format_dec else R.string.format_hex),
-                    model::toggleWriteFormat,
-                    Modifier.weight(1f),
+                    model.writeFormat,
+                    WriteFormat.entries,
+                    { stringResource(if (it == WriteFormat.DEC) R.string.format_dec else R.string.format_hex) },
+                    model::selectWriteFormat,
+                    Modifier.weight(1f).testTag("write-format"),
+                    mono = false,
                     minHeight = tileMin,
                 )
             }
@@ -655,56 +660,60 @@ private val ClockFormat = ThreadLocal.withInitial { SimpleDateFormat("HH:mm:ss",
 private fun RecentSection(model: WorkbenchViewModel, settings: UiSettings) {
     val colors = LocalModbusColors.current
     val shape = RoundedCornerShape(CardRadius)
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.recent_title), color = colors.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-        TextLink(stringResource(R.string.recent_clear), model::clearRecentWrites)
-    }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.surface1, shape)
-            .border(1.dp, colors.line, shape),
-    ) {
-        if (model.recentWrites.isEmpty()) {
-            Text(
-                stringResource(R.string.recent_empty),
-                color = colors.muted,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
-            )
+    // 标题行和其它小标题一样只占一行字高（「清空」的 48dp 热区上下溢出，不撑布局），标题 → 卡片 8dp，
+    // 上一张卡 → 标题只剩分组间距 16（原来两边各多出约 15dp，E-20261028-ux1 C3）。
+    Column(verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.s)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.recent_title), color = colors.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            TextLink(stringResource(R.string.recent_clear), model::clearRecentWrites, Modifier.overhangHeight(18.dp))
         }
-        model.recentWrites.forEachIndexed { index, entry ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 50.dp)
-                    .clickable { model.reuse(entry) }
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val kind = when (entry.outcome) {
-                    WriteOutcome.OK -> SemanticKind.RX_LOCAL
-                    WriteOutcome.SENT -> SemanticKind.DROPPED
-                    WriteOutcome.UNKNOWN -> SemanticKind.AMBIGUOUS
-                    else -> SemanticKind.ERROR
-                }
-                SemanticBadge(kind, outcomeLabel(entry))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(colors.surface1, shape)
+                .border(1.dp, colors.line, shape),
+        ) {
+            if (model.recentWrites.isEmpty()) {
                 Text(
-                    writeSummary(entry, stringResource(R.string.recent_broadcast), settings.addressStyle),
-                    style = Mono,
-                    color = colors.text,
-                    maxLines = 2,
-                    modifier = Modifier.weight(1f).padding(vertical = 6.dp),
-                )
-                Text(
-                    ClockFormat.get()!!.format(Date(entry.atMillis)),
-                    style = Mono,
+                    stringResource(R.string.recent_empty),
                     color = colors.muted,
-                    maxLines = 1,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
                 )
             }
-            if (index != model.recentWrites.lastIndex) HorizontalDivider(color = colors.rowLine)
+            model.recentWrites.forEachIndexed { index, entry ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 50.dp)
+                        .clickable { model.reuse(entry) }
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val kind = when (entry.outcome) {
+                        WriteOutcome.OK -> SemanticKind.RX_LOCAL
+                        WriteOutcome.SENT -> SemanticKind.DROPPED
+                        WriteOutcome.UNKNOWN -> SemanticKind.AMBIGUOUS
+                        else -> SemanticKind.ERROR
+                    }
+                    SemanticBadge(kind, outcomeLabel(entry))
+                    Text(
+                        writeSummary(entry, stringResource(R.string.recent_broadcast), settings.addressStyle),
+                        style = Mono,
+                        color = colors.text,
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f).padding(vertical = 6.dp),
+                    )
+                    Text(
+                        ClockFormat.get()!!.format(Date(entry.atMillis)),
+                        style = Mono,
+                        color = colors.muted,
+                        maxLines = 1,
+                    )
+                }
+                if (index != model.recentWrites.lastIndex) HorizontalDivider(color = colors.rowLine)
+            }
         }
     }
 }

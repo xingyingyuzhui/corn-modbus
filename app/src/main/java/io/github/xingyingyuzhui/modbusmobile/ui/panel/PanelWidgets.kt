@@ -327,7 +327,8 @@ internal fun EditSizeTag(text: String) {
     val colors = LocalModbusColors.current
     Text(
         text, style = Mono.copy(fontSize = 10.5.sp, lineHeight = 16.sp), color = colors.dim,
-        modifier = Modifier.border(1.dp, colors.line, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp).testTag("edit-size-tag"),
+        // 纯文字，不画描边：描边小框像按钮，但尺寸是在卡片设置里改的，这里点不了（E-20261028-ux1 B5）。
+        modifier = Modifier.testTag("edit-size-tag"),
     )
 }
 

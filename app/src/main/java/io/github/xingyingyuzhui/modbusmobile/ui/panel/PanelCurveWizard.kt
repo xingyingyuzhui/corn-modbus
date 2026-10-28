@@ -69,11 +69,11 @@ import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetForm
 import io.github.xingyingyuzhui.modbusmobile.application.panel.YAxis
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ChoiceTile
 import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusCard
+import io.github.xingyingyuzhui.modbusmobile.ui.components.FieldTileMenu
 import io.github.xingyingyuzhui.modbusmobile.ui.components.NumberInput
 import io.github.xingyingyuzhui.modbusmobile.ui.components.PrimaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.RowDivider
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SegmentedTextControl
-import io.github.xingyingyuzhui.modbusmobile.ui.components.SelectChip
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingRow
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingTrailing
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingsCard
@@ -264,27 +264,30 @@ internal fun seriesSubline(s: SeriesForm): String {
 
 @Composable
 private fun WindowSection(wizard: WizardState, result: CurveResult, onCurve: (CurveForm) -> Unit) {
-    val colors = LocalModbusColors.current
     val curve = wizard.curve ?: return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.panel_wiz_curve_window), color = colors.muted, fontSize = 12.sp)
-        FlowChips {
-            WindowChoices.forEach { sec ->
-                Box(Modifier.testTag("wiz-window-$sec")) {
-                    SelectChip(stringResource(windowChipLabel(sec)), curve.windowSec == sec, xs = true, minWidth = 48.dp) { onCurve(curve.copy(windowSec = sec)) }
-                }
-            }
-            Box(Modifier.testTag("wiz-window-custom")) {
-                SelectChip(stringResource(R.string.panel_wiz_curve_w_custom), curve.windowSec == null, xs = true, minWidth = 48.dp) {
-                    onCurve(
+        // 预设和「自定义…」都在一个下拉格里（同连接页串口格）；选自定义才出分钟输入框。
+        FieldTileMenu(
+            stringResource(R.string.panel_wiz_curve_window),
+            curve.windowSec,
+            WindowChoices + listOf<Int?>(null),
+            { sec -> stringResource(if (sec == null) R.string.panel_wiz_curve_w_custom else windowChipLabel(sec)) },
+            { sec ->
+                onCurve(
+                    if (sec != null) {
+                        curve.copy(windowSec = sec)
+                    } else {
                         curve.copy(
                             windowSec = null,
                             customMinutes = curve.customMinutes.ifBlank { ((curve.windowSec ?: 60) / 60).coerceAtLeast(1).toString() },
-                        ),
-                    )
-                }
-            }
-        }
+                        )
+                    },
+                )
+            },
+            Modifier.fillMaxWidth().testTag("wiz-window"),
+            mono = false,
+            optionTag = { sec -> if (sec == null) "wiz-window-custom" else "wiz-window-$sec" },
+        )
         if (curve.windowSec == null) {
             NumberInput(
                 stringResource(R.string.panel_wiz_curve_window_minutes), curve.customMinutes, Modifier.fillMaxWidth().testTag("wiz-window-minutes"),

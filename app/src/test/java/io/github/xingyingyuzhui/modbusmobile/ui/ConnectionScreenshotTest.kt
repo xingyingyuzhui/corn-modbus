@@ -4,11 +4,19 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasParent
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import io.github.xingyingyuzhui.modbusmobile.application.ConnectionTarget
 import io.github.xingyingyuzhui.modbusmobile.application.MemorySettingsRepository
 import io.github.xingyingyuzhui.modbusmobile.application.SerialSettings
@@ -26,6 +34,7 @@ import io.github.xingyingyuzhui.modbusmobile.ui.shell.Destination
 import io.github.xingyingyuzhui.modbusmobile.ui.theme.ModbusTheme
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +43,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /** PR-2（连接页）的 Roborazzi 截图：带 USB 设备的空闲态、展开“高级”、连接态（断开条）、横屏、帮助。 */
+@OptIn(ExperimentalRoborazziApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = "w360dp-h780dp")
@@ -53,12 +63,13 @@ class ConnectionScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** 点波特率格子弹出菜单；菜单在 Popup 窗口里，onRoot() 截不到，用整屏截图。 */
     @Test
-    fun connection_custom_light_portrait() {
+    fun connection_baud_menu_light_portrait() {
         show(ThemeMode.LIGHT, idleWithUsb())
-        compose.onNodeWithContentDescription("自定义").performClick()
+        compose.onNodeWithTag("serial-baud").performClick()
         compose.waitForIdle()
-        compose.onRoot().captureRoboImage()
+        captureScreenRoboImage()
     }
 
     @Test fun connection_running_light_portrait() = shot(ThemeMode.LIGHT, ConnSession(SessionState.Running(Role.MASTER, ConnectionTarget.Demo, 1)))
@@ -81,12 +92,44 @@ class ConnectionScreenshotTest {
     }
 
     @Test
-    fun presetRowOffersThePresetsAndTheEllipsis() {
+    fun serialCardHasOnlyTheFourDropdownTiles() {
         show(ThemeMode.DARK, idleWithUsb())
-        compose.onNodeWithText("9600 8N1").assertIsDisplayed()
-        compose.onNodeWithText("19200 8E1").assertIsDisplayed()
-        compose.onNodeWithText("115200 8N1").assertIsDisplayed()
-        compose.onNodeWithText("…").assertIsDisplayed()
+        compose.onNodeWithText("9600 8N1").assertDoesNotExist()
+        compose.onNodeWithText("…").assertDoesNotExist()
+        compose.onNodeWithText("8N1").assertDoesNotExist()
+        for (tag in listOf("serial-baud", "serial-data-bits", "serial-parity", "serial-stop-bits")) {
+            compose.onNode(hasClickAction() and hasParent(hasTestTag(tag))).assertExists()
+            val height = compose.onNodeWithTag(tag).getBoundsInRoot().let { it.bottom - it.top }
+            assertTrue("$tag 触控高 $height < 48dp", height >= 48.dp)
+        }
+    }
+
+    /** 「高级」里的回显也是下拉格（同串口四格），不再是一排 chip。 */
+    @Test
+    fun advancedEchoIsPickedFromATileMenu() {
+        show(ThemeMode.LIGHT, idleWithUsb())
+        compose.onNodeWithTag("advanced-row").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("自动").assertDoesNotExist()
+        compose.onNode(hasClickAction() and hasParent(hasTestTag("advanced-echo"))).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("echo-AUTO").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("field-menu").assertDoesNotExist()
+        compose.onNodeWithText("回显 自动", substring = true).assertExists()
+    }
+
+    @Test
+    fun pickingFromATileMenuChangesTheValueAndClosesTheMenu() {
+        show(ThemeMode.LIGHT, idleWithUsb())
+        compose.onNodeWithTag("serial-baud").performClick()
+        compose.onNodeWithText("19200").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("field-menu").assertDoesNotExist()
+        compose.onNodeWithTag("serial-parity").performClick()
+        compose.onNodeWithText("偶").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("连接为主站 · 19200 8E1").assertIsDisplayed()
     }
 
     private fun idleWithUsb() = ConnSession(SessionState.Idle).also {

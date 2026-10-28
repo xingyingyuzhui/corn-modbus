@@ -83,6 +83,8 @@ import io.github.xingyingyuzhui.modbusmobile.ui.components.PrimaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SecondaryButton
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SegmentedTextControl
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SelectChip
+import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusMenuItem
+import io.github.xingyingyuzhui.modbusmobile.ui.components.ModbusMenu
 import io.github.xingyingyuzhui.modbusmobile.application.panel.Widget
 import io.github.xingyingyuzhui.modbusmobile.application.panel.WidgetWrites
 import io.github.xingyingyuzhui.modbusmobile.ui.components.SettingTrailing
@@ -590,21 +592,36 @@ internal fun SourceSection(wizard: WizardState, result: FormResult, onForm: (Wid
                 color = colors.muted, fontSize = 12.sp, modifier = Modifier.testTag("wiz-occupies"),
             )
         }
-        // v3：只列当前区域能用的类型（不画灰的）；常用的放外面，其余收进“更多”
+        // v3：只列当前区域能用的类型（不画灰的）；常用的放外面，其余收进“更多 ▾”菜单（不再展开成一排 chip）。
+        // 选了菜单里的类型后，这颗 chip 显示成选中的类型名，再点还是弹同一个菜单。
         val allowed = form.allowedTypes()
         val common = CommonTypes.filter { it in allowed }
         val rest = allowed.filter { it !in CommonTypes }
-        var more by rememberSaveable { mutableStateOf(false) }
-        val showMore = more || form.type in rest
+        var more by remember { mutableStateOf(false) }
         FlowRowChips {
-            (common + if (showMore) rest else emptyList()).forEach { type ->
+            common.forEach { type ->
                 Box(Modifier.testTag("wiz-type-${type.name}")) {
                     SelectChip(typeLabel(type), type == form.type, xs = true) { onForm(form.withType(type)) }
                 }
             }
-            if (rest.isNotEmpty() && form.type !in rest) {
+            if (rest.isNotEmpty()) {
+                val picked = form.type in rest
                 Box(Modifier.testTag("wiz-type-more")) {
-                    SelectChip(stringResource(if (showMore) R.string.panel_wiz_type_less else R.string.panel_wiz_type_more), false, xs = true) { more = !showMore }
+                    SelectChip(
+                        if (picked) typeLabel(form.type) + " ▾" else stringResource(R.string.panel_wiz_type_more),
+                        picked,
+                        xs = true,
+                    ) { more = true }
+                    ModbusMenu(expanded = more, onDismiss = { more = false }) {
+                        rest.forEach { type ->
+                            ModbusMenuItem(
+                                typeLabel(type),
+                                onClick = { more = false; onForm(form.withType(type)) },
+                                selected = type == form.type,
+                                modifier = Modifier.testTag("wiz-type-${type.name}"),
+                            )
+                        }
+                    }
                 }
             }
         }

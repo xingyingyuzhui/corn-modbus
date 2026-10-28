@@ -337,8 +337,8 @@ class WorkbenchViewModel(
         formError = null
     }
 
-    fun toggleWriteFormat() {
-        val next = if (writeFormat == WriteFormat.DEC) WriteFormat.HEX else WriteFormat.DEC
+    fun selectWriteFormat(next: WriteFormat) {
+        if (next == writeFormat) return
         // 已经能解析的值跟着换算，免得用户看到数字“变了”。解析不了的原样保留。
         writeWords = writeWords.map { text ->
             val word = parseWord(text, writeFormat)

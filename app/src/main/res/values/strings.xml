@@ -45,8 +45,6 @@
     <string name="role_master_hint">主动读写外部从站</string>
     <string name="role_slave_hint">响应外部主站</string>
 
-    <string name="preset_custom">…</string>
-    <string name="preset_custom_description">自定义</string>
     <string name="action_help">帮助</string>
     <string name="help_title">连接说明</string>
     <string name="help_role">主站：手机主动读写外部从站设备。\n从站：手机模拟从站，响应外部主站的请求。</string>
@@ -269,7 +267,6 @@
     <string name="panel_wiz_group_control_tag">会写设备 · 每次都要确认</string>
     <string name="panel_wiz_sec_point">数据点位</string>
     <string name="panel_wiz_type_more">更多 ▾</string>
-    <string name="panel_wiz_type_less">收起 ▴</string>
     <string name="panel_wiz_address_modicon">= %1$s</string>
     <string name="panel_wiz_conv_title">换算</string>
     <string name="panel_wiz_conv_summary">× %1$s + %2$s</string>
@@ -683,9 +680,7 @@
     <string name="slave_stat_foreign">外站帧</string>
     <string name="slave_stat_ambiguous">方向不明 %1$s</string>
     <string name="mine_section_settings">设置</string>
-    <string name="mine_settings_title">设置</string>
     <string name="cd_back">返回</string>
-    <string name="cd_open_settings">设置</string>
     <string name="mine_group_appearance">外观</string>
     <string name="mine_group_display">显示与格式</string>
     <string name="mine_group_security">安全</string>

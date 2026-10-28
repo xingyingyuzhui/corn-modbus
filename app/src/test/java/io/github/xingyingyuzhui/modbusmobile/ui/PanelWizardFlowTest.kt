@@ -158,7 +158,7 @@ class PanelWizardFlowTest {
     }
 
     // 小屏：第 3 步的名称框在首屏之外，才能看出“没通过时滚过去”
-    @Test @Config(sdk = [33], qualifiers = "w360dp-h400dp")
+    @Test @Config(sdk = [33], qualifiers = "w360dp-h340dp")
     fun nextWithAMissingNameScrollsTheNameFieldIntoView() {
         // 名称在第 3 步、首屏之外；按“添加到面板”没通过时要滚过去，不能看起来“没反应”。
         show(repoWith(emptyProject()))
