@@ -1,5 +1,7 @@
 package io.github.xingyingyuzhui.modbusmobile.ui
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
@@ -112,7 +114,7 @@ class SlaveScreenshotTest {
     @Test
     fun slave_remove_range_dark_portrait() {
         show(ThemeMode.DARK, ConnectionTarget.Demo, bank())
-        compose.onNodeWithTag("slave-remove-range-open").performScrollTo().performClick()
+        compose.onNodeWithTag("slave-remove-range-open").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         compose.onRoot().captureRoboImage()
     }
@@ -121,7 +123,7 @@ class SlaveScreenshotTest {
     fun removeRangeSheetDeletesTheDefaultRunAndLeavesOtherAreas() {
         val bank = bank()
         show(ThemeMode.DARK, ConnectionTarget.Demo, bank)
-        compose.onNodeWithTag("slave-remove-range-open").performScrollTo().performClick()
+        compose.onNodeWithTag("slave-remove-range-open").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         compose.onNodeWithTag("slave-remove-range-confirm").performClick()
         compose.waitForIdle()
@@ -172,6 +174,7 @@ private class SlaveShotSession(target: ConnectionTarget, bank: VirtualRegisterBa
     override val state = MutableStateFlow<SessionState>(SessionState.Running(Role.SLAVE, target, 1))
     override val traffic = MutableSharedFlow<TrafficEvent>(replay = 1)
     override val slaveBank = MutableStateFlow<VirtualRegisterBank?>(bank)
+    override val slaveUnits = MutableStateFlow(listOf(1))
     override val usbDevices = MutableStateFlow<List<UsbDeviceSummary>>(emptyList())
     override val echoDetected = MutableStateFlow<Boolean?>(null)
     override val serial = MutableStateFlow<SerialSettings?>(SerialSettings())
