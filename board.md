@@ -163,3 +163,12 @@
 - annotated tag `v0.1.3` → 发版提交。GitHub Release（非 draft）：https://github.com/xingyingyuzhui/corn-modbus/releases/tag/v0.1.3
 - 附件：`Corn-Modbus-0.1.3.apk`（release，zipalign + 本机 Android Debug 密钥签名，与 0.1.0–0.1.2 同钥可覆盖升级；sha256 997013b52e8b0ded7382cbaa415599f6882fc4608192e3c6c6eecc2ad9f7c179）、`Corn-Modbus-0.1.3-debug.apk`（sha256 e5d02ad360e5d74fdeb6f1b09c46b952bdb41a9c3502d0bf8703e2d2d4832ce1）。APK 不入库。
 - 未提交 `app/src/test/screenshots/*.png`（规范 22）。未在本轮做设备验收（未验证）。
+
+## 2026-10-29 · 发布 v0.1.4
+
+- 内容：#30（串口卡四格下拉、选择控件统一下拉；面板写入功能码可选 FC15/16；从站删除地址段、删 Unit 连带规则与值；面板编辑页可清不显示组件）、#31（从站可删光全部 Unit，0 个 = 不应答）。
+- versionName 0.1.4 / versionCode 5；README 下载链接改为 v0.1.4。
+- 本地 `./gradlew :app:assembleRelease :app:assembleDebug` 通过（本机 Gradle 依赖缓存已空，本轮联网解析依赖）；`tools/verify_offline_apks.py` 两变体通过。
+- annotated tag `v0.1.4` → 发版提交。GitHub Release（非 draft）：https://github.com/xingyingyuzhui/corn-modbus/releases/tag/v0.1.4
+- 附件：`Corn-Modbus-0.1.4.apk`（release，zipalign + 本机 Android Debug 密钥签名，证书 SHA-256 cd8e8bc2…22af94，与 0.1.0–0.1.3 同钥可覆盖升级；sha256 d67143561582bde01058310d4acd7f5598074477ce8db23fe4189a16789dfe1c）、`Corn-Modbus-0.1.4-debug.apk`（sha256 ace435d3b92ca87c4f16add8b4b665426b17392b3f2e2be451284bf6e04a028c）。APK 不入库。
+- 未在本轮做设备验收（未验证）。

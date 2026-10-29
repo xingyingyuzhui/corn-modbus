@@ -26,8 +26,8 @@ android {
         targetSdk {
             version = release(37)
         }
-        versionCode = 4
-        versionName = "0.1.3"
+        versionCode = 5
+        versionName = "0.1.4"
         // 署名：Corn Modbus by xingyingyuzhui（与 application/Authorship.kt 一致）
         buildConfigField("String", "APP_AUTHOR", "\"xingyingyuzhui\"")
         buildConfigField("String", "APP_REPO", "\"https://github.com/xingyingyuzhui/corn-modbus\"")

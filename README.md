@@ -33,10 +33,10 @@ Android 离线 Modbus RTU 主站 / 从站调试器。协议侧有多站总线帧
 
 ## 下载
 
-安装包在 GitHub Release [v0.1.3](https://github.com/xingyingyuzhui/corn-modbus/releases/tag/v0.1.3)，APK 不入库。
+安装包在 GitHub Release [v0.1.4](https://github.com/xingyingyuzhui/corn-modbus/releases/tag/v0.1.4)，APK 不入库。
 
-- [`Corn-Modbus-0.1.3.apk`](https://github.com/xingyingyuzhui/corn-modbus/releases/download/v0.1.3/Corn-Modbus-0.1.3.apk)：日常安装，走 USB 串口和演示设备。
-- [`Corn-Modbus-0.1.3-debug.apk`](https://github.com/xingyingyuzhui/corn-modbus/releases/download/v0.1.3/Corn-Modbus-0.1.3-debug.apk)：多一条本地虚拟串口，用来和本机 PTY / PyModbus 做 RTU 联调。Release 包没有这条调试桥。做法见 [`docs/virtual-rtu-lab.md`](docs/virtual-rtu-lab.md)。
+- [`Corn-Modbus-0.1.4.apk`](https://github.com/xingyingyuzhui/corn-modbus/releases/download/v0.1.4/Corn-Modbus-0.1.4.apk)：日常安装，走 USB 串口和演示设备。
+- [`Corn-Modbus-0.1.4-debug.apk`](https://github.com/xingyingyuzhui/corn-modbus/releases/download/v0.1.4/Corn-Modbus-0.1.4-debug.apk)：多一条本地虚拟串口，用来和本机 PTY / PyModbus 做 RTU 联调。Release 包没有这条调试桥。做法见 [`docs/virtual-rtu-lab.md`](docs/virtual-rtu-lab.md)。
 
 ## 工具链
 
